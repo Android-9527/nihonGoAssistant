@@ -1,0 +1,13 @@
+﻿# Large resource folders / local assets
+extracted_pages/
+grammar_annotate/
+language_data/
+
+# Documents
+UI设计.pptx
+~$UI设计.pptx
+
+# datapre resources
+datapre/extracted_pages/
+datapre/grammar_annotate/
+datapre/language_data/
