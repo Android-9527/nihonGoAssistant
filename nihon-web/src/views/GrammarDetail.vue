@@ -81,7 +81,7 @@ export default {
       }
 
       try {
-        const response = await fetch('http://localhost:5000/api/grammar');
+        const response = await fetch('/api/grammar');
         const allGrammar = await response.json();
         const found = allGrammar.find((item) => item.id === grammarId);
 

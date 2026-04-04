@@ -98,7 +98,7 @@ export default {
     },
     async fetchSentences() {
       try {
-        const response = await fetch('http://localhost:5000/api/sentences?chapter=2');
+        const response = await fetch('/api/sentences?chapter=2');
         this.allSentences = await response.json();
         this.pickRandomSentences();
       } catch (error) {

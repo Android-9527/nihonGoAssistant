@@ -33,8 +33,8 @@ export default {
       try {
         const chapter = this.$route.query.chapter;
         const url = chapter
-          ? `http://localhost:5000/api/words?chapter=${encodeURIComponent(chapter)}`
-          : 'http://localhost:5000/api/words';
+          ? `/api/words?chapter=${encodeURIComponent(chapter)}`
+          : '/api/words';
         const response = await fetch(url);
         this.words = await response.json();
         this.displayWords = [...this.words];

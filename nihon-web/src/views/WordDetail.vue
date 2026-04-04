@@ -64,11 +64,11 @@ export default {
     async fetchWord() {
       this.wordId = this.$route.params.id;
       try {
-        const response = await fetch(`http://localhost:5000/api/word/${this.wordId}/sentences`);
+        const response = await fetch(`/api/word/${this.wordId}/sentences`);
         this.sentences = await response.json();
         
         // Get word info from first API call
-        const wordsResponse = await fetch('http://localhost:5000/api/words');
+        const wordsResponse = await fetch('/api/words');
         const allWords = await wordsResponse.json();
         this.word = allWords.find(w => w.id == this.wordId);
       } catch (error) {

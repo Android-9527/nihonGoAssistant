@@ -61,8 +61,8 @@ export default {
       try {
         const chapter = this.$route.query.chapter;
         const url = chapter
-          ? `http://localhost:5000/api/sentences?chapter=${encodeURIComponent(chapter)}`
-          : 'http://localhost:5000/api/sentences';
+          ? `/api/sentences?chapter=${encodeURIComponent(chapter)}`
+          : '/api/sentences';
         const response = await fetch(url);
         this.sentences = await response.json();
       } catch (error) {

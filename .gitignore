@@ -11,3 +11,6 @@ UI设计.pptx
 datapre/extracted_pages/
 datapre/grammar_annotate/
 datapre/language_data/
+.venv/
+pycache/
+.pyc

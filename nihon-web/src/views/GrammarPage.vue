@@ -86,8 +86,8 @@ export default {
       try {
         const chapter = this.$route.query.chapter;
         const url = chapter
-          ? `http://localhost:5000/api/grammar?chapter=${encodeURIComponent(chapter)}`
-          : 'http://localhost:5000/api/grammar';
+          ? `/api/grammar?chapter=${encodeURIComponent(chapter)}`
+          : '/api/grammar';
         const response = await fetch(url);
         this.grammar = await response.json();
       } catch (error) {
