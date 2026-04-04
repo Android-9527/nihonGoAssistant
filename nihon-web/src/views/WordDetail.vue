@@ -29,7 +29,7 @@
     <div class="sentences-section">
       <h3>包含该单词的例句（共 {{ sentences.length }} 句）</h3>
       <div v-if="sentences.length > 0" class="sentences-list">
-        <div v-for="sentence in sentences" :key="sentence.id" @mouseenter="speakSentence(sentence.japanese)" class="sentence-card">
+        <div v-for="sentence in sentences" :key="sentence.id" @mouseenter="speakSentence(sentence)" class="sentence-card">
           <div class="sentence-japanese">{{ sentence.japanese }}</div>
           <div class="sentence-tokens">
             <span 
@@ -78,8 +78,13 @@ export default {
     goBack() {
       this.$router.push('/words');
     },
-    speakSentence(text) {
-      speakJapanese(text);
+    speakSentence(sentence) {
+      const text = sentence?.japanese || '';
+      speakJapanese(text, {
+        ttsAudioId: sentence?.tts_audio_id,
+        entityType: 'sentence',
+        entityId: sentence?.id,
+      });
     },
   },
   mounted() {

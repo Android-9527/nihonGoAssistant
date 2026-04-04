@@ -70,7 +70,11 @@ export default {
     },
     speakWord(word) {
       const text = word.kana && word.kana !== '/' ? word.kana : (word.kanji && word.kanji !== '/' ? word.kanji : '');
-      speakJapanese(text);
+      speakJapanese(text, {
+        ttsAudioId: word.tts_audio_id,
+        entityType: 'word',
+        entityId: word.id,
+      });
     },
   },
   mounted() {
@@ -109,11 +113,18 @@ export default {
       <div 
         v-for="(word, idx) in filteredWords" 
         :key="word.id"
-        @mouseenter="speakWord(word)"
         @click="goToWordDetail(word.id)"
         class="word-item"
       >
         <span class="word-number">{{ idx + 1 }}</span>
+        <button
+          class="speak-btn"
+          type="button"
+          title="播放读音"
+          @click.stop="speakWord(word)"
+        >
+          🔊
+        </button>
         <div class="word-content">
           <span v-if="!hideFields.kana" class="kana">{{ word.kana }}</span>
           <span v-if="!hideFields.kanji" class="kanji">{{ word.kanji }}</span>
@@ -231,6 +242,22 @@ export default {
   font-weight: 600;
   color: #6b7280;
   flex-shrink: 0;
+}
+
+.speak-btn {
+  width: 32px;
+  height: 32px;
+  margin-right: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.speak-btn:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 .word-content {

@@ -94,8 +94,13 @@ export default {
       }
       return '';
     },
-    speakSentence(text) {
-      speakJapanese(text);
+    speakSentence(sentence) {
+      const text = sentence?.japanese || '';
+      speakJapanese(text, {
+        ttsAudioId: sentence?.tts_audio_id,
+        entityType: 'sentence',
+        entityId: sentence?.id,
+      });
     },
   },
   mounted() {
@@ -128,12 +133,21 @@ export default {
           <div
             v-for="sentence in group.sentences"
             :key="sentence.id"
-            @mouseenter="speakSentence(sentence.japanese)"
             class="sentence-card"
           >
             <div class="sentence-number">{{ sentence.id }}</div>
             <div class="sentence-content">
-              <div class="japanese">{{ sentence.japanese }}</div>
+              <div class="sentence-head">
+                <button
+                  class="speak-btn"
+                  type="button"
+                  title="播放读音"
+                  @click.stop="speakSentence(sentence)"
+                >
+                  🔊
+                </button>
+                <div class="japanese">{{ sentence.japanese }}</div>
+              </div>
               <div class="tokens">
                 <span
                   v-for="token in sentence.tokens"
@@ -155,10 +169,17 @@ export default {
           <article
             v-for="sentence in group.sentences"
             :key="sentence.id"
-            @mouseenter="speakSentence(sentence.japanese)"
             class="dialogue-line"
           >
             <div class="dialogue-row">
+              <button
+                class="speak-btn"
+                type="button"
+                title="播放读音"
+                @click.stop="speakSentence(sentence)"
+              >
+                🔊
+              </button>
               <span class="speaker">{{ sentence.speaker || '旁白' }}</span>
               <span class="utterance">{{ sentence.content || sentence.japanese }}</span>
             </div>
@@ -178,14 +199,22 @@ export default {
           </article>
         </div>
 
-        <article v-else class="essay-wrap" @mouseenter="speakSentence(group.sentences.map((s) => s.content || s.japanese).join(' '))">
-          <p
+        <article v-else class="essay-wrap">
+          <div
             v-for="sentence in group.sentences"
             :key="sentence.id"
-            class="essay-paragraph"
+            class="essay-line"
           >
-            {{ sentence.content || sentence.japanese }}
-          </p>
+            <button
+              class="speak-btn"
+              type="button"
+              title="播放读音"
+              @click.stop="speakSentence(sentence)"
+            >
+              🔊
+            </button>
+            <p class="essay-paragraph">{{ sentence.content || sentence.japanese }}</p>
+          </div>
 
           <div class="essay-token-lines">
             <div v-for="sentence in group.sentences" :key="`tokens-${sentence.id}`" class="tokens">
@@ -308,6 +337,27 @@ export default {
   align-items: flex-start;
 }
 
+.sentence-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.speak-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.speak-btn:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
 .speaker {
   display: inline-block;
   min-width: 64px;
@@ -340,11 +390,22 @@ export default {
 }
 
 .essay-paragraph {
-  margin: 0 0 10px;
+  margin: 0;
   color: #111827;
   font-size: 16px;
   line-height: 1.9;
   text-indent: 2em;
+}
+
+.essay-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.essay-line:last-child {
+  margin-bottom: 0;
 }
 
 .essay-paragraph:last-child {

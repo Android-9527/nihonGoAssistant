@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-from flask import Flask, jsonify, request
+from flask import Flask, abort, jsonify, request, send_file
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -117,6 +117,63 @@ def token_select_sql(conn, word_table: str) -> str:
     """
 
 
+def tts_audio_id_expr(conn, entity_type: str, entity_id_expr: str) -> str:
+    if not table_exists(conn, "tts_audio"):
+        return "NULL"
+    if not column_exists(conn, "tts_audio", "id"):
+        return "NULL"
+    return (
+        "(SELECT ta.id FROM tts_audio ta "
+        f"WHERE ta.entity_type = '{entity_type}' "
+        f"AND ta.entity_id = {entity_id_expr} "
+        "AND COALESCE(ta.status, 'done') = 'done' "
+        "ORDER BY ta.updated_at DESC, ta.id DESC LIMIT 1)"
+    )
+
+
+def resolve_tts_file_path(raw_path: str | None, entity_type: str | None = None, entity_id: int | None = None) -> Path | None:
+    base_audio_dir = DB_PATH.parent / "text2speech" / "audio"
+    candidates: list[Path] = []
+
+    if raw_path:
+        p = Path(raw_path)
+        candidates.append(p)
+
+        normalized = str(raw_path).replace("\\", "/").strip()
+        if normalized:
+            if normalized.startswith("audio/"):
+                candidates.append(base_audio_dir / normalized[len("audio/") :])
+
+            normalized_lc = normalized.lower()
+            marker_full = "datapre/text2speech/audio/"
+            marker_full_lc = marker_full.lower()
+            if marker_full_lc in normalized_lc:
+                idx = normalized_lc.index(marker_full_lc)
+                rel = normalized[idx + len(marker_full) :]
+                candidates.append(base_audio_dir / rel)
+
+            marker_audio = "/audio/"
+            if marker_audio in normalized_lc:
+                idx = normalized_lc.index(marker_audio)
+                rel = normalized[idx + len(marker_audio) :]
+                candidates.append(base_audio_dir / rel)
+
+    if entity_type and entity_id and (base_audio_dir / entity_type).exists():
+        pattern = f"{entity_type}_{entity_id}.mp3"
+        candidates.extend(sorted((base_audio_dir / entity_type).glob(f"chapter_*/{pattern}")))
+
+    seen = set()
+    for cand in candidates:
+        key = str(cand)
+        if key in seen:
+            continue
+        seen.add(key)
+        if cand.exists() and cand.is_file():
+            return cand
+
+    return None
+
+
 @app.route("/api/words", methods=["GET"])
 def get_words():
     """Get all words"""
@@ -124,16 +181,17 @@ def get_words():
     chapter = request.args.get("chapter", type=int)
     word_table = pick_table(conn, "words", "word")
     has_chapter = column_exists(conn, word_table, "chapter")
+    tts_expr = tts_audio_id_expr(conn, "word", f"{word_table}.id")
 
     if chapter and has_chapter:
         cur = conn.execute(
-            f"SELECT id, kana, kanji, chinese, chapter FROM {word_table} WHERE chapter = ? ORDER BY id",
+            f"SELECT id, kana, kanji, chinese, chapter, {tts_expr} AS tts_audio_id FROM {word_table} WHERE chapter = ? ORDER BY id",
             (chapter,),
         )
     elif has_chapter:
-        cur = conn.execute(f"SELECT id, kana, kanji, chinese, chapter FROM {word_table} ORDER BY id")
+        cur = conn.execute(f"SELECT id, kana, kanji, chinese, chapter, {tts_expr} AS tts_audio_id FROM {word_table} ORDER BY id")
     else:
-        cur = conn.execute(f"SELECT id, kana, kanji, chinese FROM {word_table} ORDER BY id")
+        cur = conn.execute(f"SELECT id, kana, kanji, chinese, {tts_expr} AS tts_audio_id FROM {word_table} ORDER BY id")
     words = [dict(row) for row in cur.fetchall()]
     conn.close()
     return jsonify(words)
@@ -145,13 +203,14 @@ def get_word_sentences(word_id):
     conn = get_db()
     jp_col, seg_col, group_col = sentence_cols(conn)
     group_id_expr, group_type_expr, group_title_expr, speaker_expr, content_expr = sentence_meta_select(conn, "s")
+    sentence_tts_expr = tts_audio_id_expr(conn, "sentence", "s.id")
     word_table = pick_table(conn, "words", "word")
     
     # Get sentences where this word appears in tokens
     cur = conn.execute(
         f"""
          SELECT DISTINCT s.id, s.chapter, s.{group_col} AS grid,
-             {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr},
+             {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id,
              s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese
         FROM sentence s
         JOIN sentence_word_grammar st ON s.id = st.sentence_id
@@ -179,16 +238,17 @@ def get_sentences():
     conn = get_db()
     jp_col, seg_col, group_col = sentence_cols(conn)
     group_id_expr, group_type_expr, group_title_expr, speaker_expr, content_expr = sentence_meta_select(conn, "sentence")
+    sentence_tts_expr = tts_audio_id_expr(conn, "sentence", "sentence.id")
     word_table = pick_table(conn, "words", "word")
     
     if chapter:
         cur = conn.execute(
-            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese FROM sentence WHERE chapter = ? ORDER BY id",
+            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese FROM sentence WHERE chapter = ? ORDER BY id",
             (chapter,),
         )
     else:
         cur = conn.execute(
-            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese FROM sentence ORDER BY id"
+            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese FROM sentence ORDER BY id"
         )
     
     sentences = [dict(row) for row in cur.fetchall()]
@@ -228,6 +288,7 @@ def get_grammar():
     
     conn = get_db()
     jp_col, seg_col, group_col = sentence_cols(conn)
+    sentence_tts_expr = tts_audio_id_expr(conn, "sentence", "s.id")
     word_table = pick_table(conn, "words", "word")
     
     if chapter:
@@ -249,7 +310,7 @@ def get_grammar():
             cur = conn.execute(
                 f"""
                 SELECT s.id, s.chapter, s.{group_col} AS grid,
-                       {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr},
+                      {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id,
                        s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese
                 FROM sentence s
                 JOIN grammar_examples ge ON s.id = ge.sentence_id
@@ -262,7 +323,7 @@ def get_grammar():
             cur = conn.execute(
                 f"""
                   SELECT s.id, s.chapter, s.{group_col} AS grid,
-                      {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr},
+                      {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id,
                        s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese
                 FROM sentence s
                 JOIN grammar_group_sentence ggs ON s.group_id = ggs.group_id
@@ -283,6 +344,63 @@ def get_grammar():
     
     conn.close()
     return jsonify(grammar_points)
+
+
+@app.route("/api/tts/audio", methods=["GET"])
+def get_tts_audio():
+    """Stream TTS audio by tts_audio_id or by (entity_type, entity_id)."""
+    conn = get_db()
+    try:
+        if not table_exists(conn, "tts_audio"):
+            abort(404, description="tts_audio table not found")
+
+        tts_audio_id = request.args.get("tts_audio_id", type=int)
+        entity_type = request.args.get("entity_type", default="", type=str).strip().lower()
+        entity_id = request.args.get("entity_id", type=int)
+
+        if tts_audio_id:
+            row = conn.execute(
+                """
+                SELECT id, file_path, audio_encoding, status, entity_type, entity_id
+                FROM tts_audio
+                WHERE id = ?
+                LIMIT 1
+                """,
+                (tts_audio_id,),
+            ).fetchone()
+        elif entity_type and entity_id is not None:
+            row = conn.execute(
+                """
+                SELECT id, file_path, audio_encoding, status, entity_type, entity_id
+                FROM tts_audio
+                WHERE entity_type = ? AND entity_id = ?
+                ORDER BY updated_at DESC, id DESC
+                LIMIT 1
+                """,
+                (entity_type, entity_id),
+            ).fetchone()
+        else:
+            abort(400, description="Provide tts_audio_id or (entity_type and entity_id)")
+
+        if not row:
+            abort(404, description="TTS audio not found")
+
+        if row["status"] and row["status"] != "done":
+            abort(404, description="TTS audio is not ready")
+
+        file_path = resolve_tts_file_path(
+            row["file_path"],
+            row["entity_type"],
+            row["entity_id"],
+        )
+        if not file_path:
+            abort(404, description="Audio file not found")
+
+        audio_encoding = (row["audio_encoding"] or "MP3").upper()
+        mimetype = "audio/mpeg" if audio_encoding == "MP3" else "application/octet-stream"
+        return send_file(file_path, mimetype=mimetype, conditional=True)
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

@@ -37,10 +37,19 @@
         <div
           v-for="example in examples"
           :key="example.id"
-          @mouseenter="speakSentence(example.japanese)"
           class="sentence-card"
         >
-          <div class="sentence-japanese">{{ example.japanese }}</div>
+          <div class="sentence-head">
+            <button
+              class="speak-btn"
+              type="button"
+              title="播放读音"
+              @click.stop="speakSentence(example)"
+            >
+              🔊
+            </button>
+            <div class="sentence-japanese">{{ example.japanese }}</div>
+          </div>
           <div class="sentence-tokens">
             <span
               v-for="token in example.tokens"
@@ -119,8 +128,13 @@ export default {
     goBack() {
       this.$router.push('/grammar');
     },
-    speakSentence(text) {
-      speakJapanese(text);
+    speakSentence(example) {
+      const text = example?.japanese || '';
+      speakJapanese(text, {
+        ttsAudioId: example?.tts_audio_id,
+        entityType: 'sentence',
+        entityId: example?.id,
+      });
     },
   },
   mounted() {
@@ -248,6 +262,28 @@ export default {
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 12px;
+}
+
+.sentence-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.speak-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.speak-btn:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
 }
 
 .sentence-tokens {
