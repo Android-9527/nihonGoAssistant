@@ -29,8 +29,18 @@
     <div class="sentences-section">
       <h3>包含该单词的例句（共 {{ sentences.length }} 句）</h3>
       <div v-if="sentences.length > 0" class="sentences-list">
-        <div v-for="sentence in sentences" :key="sentence.id" @mouseenter="speakSentence(sentence)" class="sentence-card">
-          <div class="sentence-japanese">{{ sentence.japanese }}</div>
+        <div v-for="sentence in sentences" :key="sentence.id" class="sentence-card">
+          <div class="sentence-head">
+            <button
+              class="speak-btn"
+              type="button"
+              title="播放读音"
+              @click.stop="speakSentence(sentence)"
+            >
+              🔊
+            </button>
+            <div class="sentence-japanese">{{ sentence.japanese }}</div>
+          </div>
           <div class="sentence-tokens">
             <span 
               v-for="token in sentence.tokens" 
@@ -201,11 +211,33 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+.sentence-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.speak-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.speak-btn:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
 .sentence-japanese {
   font-size: 18px;
   font-weight: 600;
   color: #1f2937;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .sentence-tokens {

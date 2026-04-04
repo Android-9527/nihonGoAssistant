@@ -7,7 +7,7 @@
 
     <div class="module-grid">
       <article class="module-card" @click="go('/textbooks')">
-        <h2>我的课文</h2>
+        <h2>我的课本</h2>
         <p>查看当前在学课本，进入章节学习流程。</p>
       </article>
 

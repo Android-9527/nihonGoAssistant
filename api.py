@@ -117,6 +117,47 @@ def token_select_sql(conn, word_table: str) -> str:
     """
 
 
+def split_segmented_tokens(segmented_text: str | None, fallback_text: str | None = None) -> list[str]:
+    segmented = (segmented_text or "").replace("\u3000", " ")
+    segmented = segmented.replace("/", " ").replace("／", " ")
+    segmented = segmented.replace("|", " ").strip()
+    if segmented:
+        tokens = [part for part in segmented.split() if part]
+        if tokens:
+            return tokens
+    fallback = (fallback_text or "").strip()
+    return [fallback] if fallback else []
+
+
+def build_sentence_tokens(segmented_text: str | None, japanese_text: str | None, mapped_rows: list[dict]) -> list[dict]:
+    full_surfaces = split_segmented_tokens(segmented_text, japanese_text)
+    mapped_by_index: dict[int, dict] = {}
+    for row in mapped_rows:
+        idx = row.get("token_index")
+        if isinstance(idx, int):
+            mapped_by_index[idx] = row
+
+    if full_surfaces:
+        merged = []
+        for idx, surface in enumerate(full_surfaces):
+            mapped = mapped_by_index.get(idx, {})
+            merged.append(
+                {
+                    "token_index": idx,
+                    "surface": mapped.get("surface") or surface,
+                    "pos": mapped.get("pos", ""),
+                    "word_id": mapped.get("word_id"),
+                    "grammar_id": mapped.get("grammar_id"),
+                    "kana": mapped.get("kana", ""),
+                    "kanji": mapped.get("kanji", ""),
+                    "chinese": mapped.get("chinese", ""),
+                }
+            )
+        return merged
+
+    return mapped_rows
+
+
 def tts_audio_id_expr(conn, entity_type: str, entity_id_expr: str) -> str:
     if not table_exists(conn, "tts_audio"):
         return "NULL"
@@ -224,7 +265,12 @@ def get_word_sentences(word_id):
     # For each sentence, get all tokens with word details
     for sentence in sentences:
         cur = conn.execute(token_select_sql(conn, word_table), (sentence["id"],))
-        sentence["tokens"] = [dict(row) for row in cur.fetchall()]
+        mapped_tokens = [dict(row) for row in cur.fetchall()]
+        sentence["tokens"] = build_sentence_tokens(
+            sentence.get("japanese_segmented"),
+            sentence.get("japanese"),
+            mapped_tokens,
+        )
     
     conn.close()
     return jsonify(sentences)
@@ -258,7 +304,12 @@ def get_sentences():
     # Get tokens and grammar matches for each sentence
     for sentence in sentences:
         cur = conn.execute(token_select_sql(conn, word_table), (sentence["id"],))
-        sentence["tokens"] = [dict(row) for row in cur.fetchall()]
+        mapped_tokens = [dict(row) for row in cur.fetchall()]
+        sentence["tokens"] = build_sentence_tokens(
+            sentence.get("japanese_segmented"),
+            sentence.get("japanese"),
+            mapped_tokens,
+        )
 
         if has_sentence_grammar:
             cur = conn.execute(
@@ -338,7 +389,12 @@ def get_grammar():
         # Get tokens for each example sentence
         for example in examples:
             cur = conn.execute(token_select_sql(conn, word_table), (example["id"],))
-            example["tokens"] = [dict(row) for row in cur.fetchall()]
+            mapped_tokens = [dict(row) for row in cur.fetchall()]
+            example["tokens"] = build_sentence_tokens(
+                example.get("japanese_segmented"),
+                example.get("japanese"),
+                mapped_tokens,
+            )
         
         point["examples"] = examples
     

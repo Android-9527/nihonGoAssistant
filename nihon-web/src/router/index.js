@@ -10,6 +10,10 @@ import WordDetail from '../views/WordDetail.vue'
 import SentencesPage from '../views/SentencesPage.vue'
 import GrammarPage from '../views/GrammarPage.vue'
 import GrammarDetail from '../views/GrammarDetail.vue'
+import DonatePage from '../views/DonatePage.vue'
+import AboutPage from '../views/AboutPage.vue'
+import AboutProjectPage from '../views/AboutProjectPage.vue'
+import AboutAuthorPage from '../views/AboutAuthorPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -26,6 +30,10 @@ const router = createRouter({
     { path: '/sentences', name: 'sentences', component: SentencesPage },
     { path: '/grammar', name: 'grammar', component: GrammarPage },
     { path: '/grammar/:id', name: 'grammar-detail', component: GrammarDetail },
+    { path: '/donate', name: 'donate', component: DonatePage },
+    { path: '/about', name: 'about', component: AboutPage },
+    { path: '/about/project', name: 'about-project', component: AboutProjectPage },
+    { path: '/about/author', name: 'about-author', component: AboutAuthorPage },
   ],
 })
 
