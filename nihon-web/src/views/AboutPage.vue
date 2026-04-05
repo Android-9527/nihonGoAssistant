@@ -7,13 +7,18 @@
 
     <div class="entry-grid">
       <article class="entry-card" @click="go('/about/project')">
-        <h2>关于项目</h2>
-        <p>查看 Nihon Assistant 的定位、功能与目标。</p>
+        <h2>设计逻辑</h2>
+        <p>查看 Nihon Assistant 的设计思路、功能结构与实现路径。</p>
       </article>
 
       <article class="entry-card" @click="go('/about/author')">
         <h2>关于作者</h2>
         <p>查看作者介绍与项目维护说明。</p>
+      </article>
+
+      <article class="entry-card" @click="go('/about/changelog')">
+        <h2>版本更新</h2>
+        <p>查看版本迭代记录、功能变化与后续规划。</p>
       </article>
     </div>
   </section>

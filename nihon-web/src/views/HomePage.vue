@@ -13,12 +13,12 @@
 
       <article class="module-card" @click="go('/my-words')">
         <h2>我的单词</h2>
-        <p>按章节进入单词学习。当前仅第2章有数据。</p>
+        <p>按章节进入单词学习。</p>
       </article>
 
       <article class="module-card" @click="go('/my-grammar')">
         <h2>我的语法</h2>
-        <p>按章节进入语法学习。当前仅第2章有数据。</p>
+        <p>按章节进入语法学习。</p>
       </article>
     </div>
 
