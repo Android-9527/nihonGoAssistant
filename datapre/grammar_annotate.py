@@ -12,6 +12,7 @@ import json
 import os
 import sqlite3
 import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from pathlib import Path
 
 from google import genai
@@ -19,22 +20,46 @@ from google import genai
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "nihon_assistant_data.db"
-TARGET_CHAPTER = 4
+TARGET_CHAPTER = 19
 MODEL = os.getenv("GENAI_MODEL", "gemini-2.5-flash")
+REQUEST_TIMEOUT_SEC = int(os.getenv("GENAI_REQUEST_TIMEOUT_SEC", "45"))
+
+
+def setup_network_proxy() -> None:
+	"""Optionally map GENAI_PROXY to HTTP(S)_PROXY for httpx transport."""
+	proxy = (os.getenv("GENAI_PROXY") or "").strip()
+	if not proxy:
+		if os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY"):
+			return
+		# Clash default local port fallback.
+		proxy = "http://127.0.0.1:7897"
+		os.environ["GENAI_PROXY"] = proxy
+
+	if not os.getenv("HTTPS_PROXY"):
+		os.environ["HTTPS_PROXY"] = proxy
+	if not os.getenv("HTTP_PROXY"):
+		os.environ["HTTP_PROXY"] = proxy
+
+	print(f"🌐 Using proxy: {proxy}")
 
 
 def get_output_path(chapter: int) -> Path:
-	return BASE_DIR / f"chapter{chapter}_highlight_preview.json"
+	output_dir = BASE_DIR / "grammar_annotate"
+	output_dir.mkdir(parents=True, exist_ok=True)
+	return output_dir / f"chapter{chapter}_highlight_preview.json"
 
 
 def get_client() -> genai.Client:
+	setup_network_proxy()
 	api_key = (
 		os.getenv("GEMINI_API_KEY")
 		or os.getenv("GOOGLE_API_KEY")
-		or "AIzaSyCthY-uXtLJ8GdqYz-towq28MP1LwBO6v4"
+		
 	)
 	if not api_key:
 		raise ValueError("No API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY.")
+	if not os.getenv("HTTPS_PROXY") and not os.getenv("HTTP_PROXY"):
+		print("⚠ 未检测到代理环境变量，且 Clash 默认代理配置失败。请手动设置 GENAI_PROXY。")
 	return genai.Client(api_key=api_key)
 
 
@@ -184,19 +209,36 @@ def infer_batch_matches(client: genai.Client, chapter: int, sentences: list[dict
 	
 	for attempt in range(max_retries):
 		try:
-			response = client.models.generate_content(model=MODEL, contents=prompt)
+			executor = ThreadPoolExecutor(max_workers=1)
+			future = executor.submit(client.models.generate_content, model=MODEL, contents=prompt)
+			response = future.result(timeout=REQUEST_TIMEOUT_SEC)
+			executor.shutdown(wait=False, cancel_futures=True)
 			parsed = parse_json_response(response.text or "")
 			time.sleep(0.5)  # 请求间延迟
 			return normalize_matches_payload(parsed)
+		except FuturesTimeoutError:
+			future.cancel()
+			executor.shutdown(wait=False, cancel_futures=True)
+			if attempt < max_retries - 1:
+				wait_time = base_wait * (2 ** attempt)
+				print(f"⏳ API请求超时({REQUEST_TIMEOUT_SEC}s)，等待 {wait_time}s 后重试... [尝试 {attempt + 1}/{max_retries}]")
+				time.sleep(wait_time)
+				continue
+			raise TimeoutError(f"Gemini request timed out after {REQUEST_TIMEOUT_SEC}s")
 		except Exception as e:
 			error_str = str(e)
 			# Check for rate limiting or service unavailable errors
-			if "503" in error_str or "UNAVAILABLE" in error_str:
+			if "503" in error_str or "UNAVAILABLE" in error_str or "timed out" in error_str.lower():
 				if attempt < max_retries - 1:
 					wait_time = base_wait * (2 ** attempt)
 					print(f"⏳ API触发限流 (503 UNAVAILABLE)，等待 {wait_time}s 后重试... [尝试 {attempt + 1}/{max_retries}]")
 					time.sleep(wait_time)
 					continue
+			if "ConnectTimeout" in error_str or "WinError 10060" in error_str:
+				raise RuntimeError(
+					"网络连接超时: 无法连接 Gemini。请设置代理，例如 PowerShell: "
+					"$env:GENAI_PROXY='http://127.0.0.1:7897' 后重试。"
+				) from e
 			# For other errors or final retry, raise
 			raise
 
@@ -294,15 +336,9 @@ def annotate_chapter_with_llm(chapter: int = TARGET_CHAPTER, batch_size: int = 1
 
 
 if __name__ == "__main__":
-	print("开始标注第16-25章...")
-	for chapter in range(16, 26):
-		try:
-			print(f"\n📖 处理第{chapter}章...")
-			annotate_chapter_with_llm(chapter)
-		except Exception as e:
-			print(f"❌ 第{chapter}章出错: {e}")
-			continue
-	print("\n🎉 第16-25章处理完成！")
+	print(f"开始标注第{TARGET_CHAPTER}章...")
+	annotate_chapter_with_llm(TARGET_CHAPTER)
+	print(f"🎉 第{TARGET_CHAPTER}章处理完成！")
 
 
 

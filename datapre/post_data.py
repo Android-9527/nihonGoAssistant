@@ -17,6 +17,7 @@ except ImportError:
 
 
 DB_PATH = Path(__file__).resolve().parent / "nihon_assistant_data.db"
+TARGET_CHAPTER = 19
 
 
 def clean_kana_text(text: str) -> str:
@@ -142,11 +143,17 @@ def merge_tokens_by_wordlist(tokens, chapter: int, by_chapter, global_map):
 	return merged
 
 
-def rebuild_sentence_word_relations(conn: sqlite3.Connection):
+def rebuild_sentence_word_relations(conn: sqlite3.Connection, chapter: int | None = None):
 	"""重建 sentence 和 word 的关系，写入 sentence_word_grammar。"""
 	by_chapter, global_map = build_word_lookup(conn)
 	cursor = conn.cursor()
-	cursor.execute("SELECT id, chapter, jp_sentence_seg FROM sentence ORDER BY id")
+	if chapter is None:
+		cursor.execute("SELECT id, chapter, jp_sentence_seg FROM sentence ORDER BY id")
+	else:
+		cursor.execute(
+			"SELECT id, chapter, jp_sentence_seg FROM sentence WHERE chapter = ? ORDER BY id",
+			(chapter,),
+		)
 	sentence_rows = cursor.fetchall()
 
 	inserted_count = 0
@@ -204,7 +211,7 @@ def build_segmented_text(tokens) -> str:
 	return "/".join(tokens)
 
 
-def update_sentence_segments():
+def update_sentence_segments(chapter: int | None = None):
 	"""读取 sentence 表中的 jp_sentence，并回写 jp_sentence_seg。"""
 	if Tagger is None:
 		raise RuntimeError("缺少 fugashi，请先安装: pip install fugashi[unidic-lite]")
@@ -216,7 +223,13 @@ def update_sentence_segments():
 	clean_word_kana(conn)
 	by_chapter, global_map = build_word_lookup(conn)
 
-	cursor.execute("SELECT id, chapter, jp_sentence FROM sentence ORDER BY id")
+	if chapter is None:
+		cursor.execute("SELECT id, chapter, jp_sentence FROM sentence ORDER BY id")
+	else:
+		cursor.execute(
+			"SELECT id, chapter, jp_sentence FROM sentence WHERE chapter = ? ORDER BY id",
+			(chapter,),
+		)
 	rows = cursor.fetchall()
 
 	updated_count = 0
@@ -234,9 +247,9 @@ def update_sentence_segments():
 	conn.commit()
 	print(f"✓ 已更新 {updated_count} 条句子的 jp_sentence_seg")
 
-	rebuild_sentence_word_relations(conn)
+	rebuild_sentence_word_relations(conn, chapter)
 	conn.close()
 
 
 if __name__ == "__main__":
-	update_sentence_segments()
+	update_sentence_segments(TARGET_CHAPTER)

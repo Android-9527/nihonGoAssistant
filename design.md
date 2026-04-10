@@ -77,4 +77,63 @@ output：{数据库表：}
 
 
 
-
+{
+  "database_schema": {
+    "words": [
+      "id",
+      "kana",
+      "kanji",
+      "chinese",
+      "importance",
+      "proficiency"
+    ],
+    "sentence": [
+      "id",
+      "chapter",
+      "grid",
+      "japanese",
+      "japanse_seg",
+      "chinese",
+      "importance",
+      "proficiency"
+    ],
+    "grammar": [
+      "id",
+      "chapter",
+      "template",
+      "explanation",
+      "proficiency",
+      "importance",
+      "proficiency"
+    ],
+    "grammar_sentence": [
+      "id",
+      "grammar_id",
+      "sentence_id"
+    ],
+    "sentence_word_grammar": [
+      "id",
+      "grammar_id",
+      "sentence_id",
+      "word_id",
+      "surface",
+      "pos",
+      "token_index"
+    ],
+    "sentence_group": [
+      "group_id",
+      "chapter",
+      "type",
+      "title"
+    ],
+    "tts_audio": [
+      "id",
+      "entity_type",
+      "entity_id",
+      "chapter",
+      "language",
+      "encoding",
+      "file_path"
+    ]
+  }
+}

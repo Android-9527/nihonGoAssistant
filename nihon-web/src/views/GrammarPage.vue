@@ -2,17 +2,17 @@
   <div class="grammar-container">
     <div class="grammar-header">
       <h2>语法学习</h2>
-      <input 
-        v-model="searchText" 
-        type="text" 
+      <input
+        v-model="searchText"
+        type="text"
         placeholder="搜索语法..."
         class="search-input"
       />
     </div>
 
     <div class="grammar-list">
-      <div 
-        v-for="point in filteredGrammar" 
+      <div
+        v-for="point in filteredGrammar"
         :key="point.id"
         class="grammar-card"
       >
@@ -20,7 +20,7 @@
           <div class="grammar-id">{{ point.id }}.</div>
           <div class="grammar-template">{{ point.template }}</div>
         </div>
-        
+
         <div class="grammar-explanation">
           {{ point.explanation }}
         </div>
@@ -28,8 +28,8 @@
         <div class="examples-section">
           <h4>例句</h4>
           <div class="examples-list">
-            <div 
-              v-for="example in point.examples" 
+            <div
+              v-for="example in point.examples"
               :key="example.id"
               class="example-item"
             >
@@ -45,8 +45,8 @@
                 <div class="example-japanese">{{ example.japanese }}</div>
               </div>
               <div class="tokens">
-                <span 
-                  v-for="token in example.tokens" 
+                <span
+                  v-for="token in example.tokens"
                   :key="`${example.id}-${token.token_index}`"
                   @click.stop="handleTokenClick(token)"
                   :class="tokenClasses(token)"
@@ -66,6 +66,34 @@
     <p v-if="filteredGrammar.length === 0" class="no-results">
       未找到匹配的语法
     </p>
+
+    <div v-if="tokenInfoVisible" class="token-modal-mask" @click.self="closeTokenInfo">
+      <div class="token-modal">
+        <div class="token-modal-head">
+          <h3>分词信息</h3>
+          <button class="close-btn" type="button" @click="closeTokenInfo">关闭</button>
+        </div>
+
+        <p class="token-surface">分词：{{ selectedToken?.surface || '-' }}</p>
+
+        <div v-if="selectedToken?.word_id" class="token-block word-block">
+          <h4>单词信息</h4>
+          <p><strong>ID：</strong>{{ selectedToken.word_id }}</p>
+          <p><strong>假名：</strong>{{ selectedToken.kana || '-' }}</p>
+          <p><strong>汉字：</strong>{{ selectedToken.kanji || '-' }}</p>
+          <p><strong>中文：</strong>{{ selectedToken.chinese || '-' }}</p>
+          <button class="jump-btn" type="button" @click="goToWordDetail">进入单词详情</button>
+        </div>
+
+        <div v-if="selectedToken?.grammar_id != null" class="token-block grammar-block">
+          <h4>语法信息</h4>
+          <p><strong>ID：</strong>{{ selectedToken.grammar_id }}</p>
+          <p><strong>模板：</strong>{{ selectedGrammar?.template || '-' }}</p>
+          <p><strong>解释：</strong>{{ selectedGrammar?.explanation || '-' }}</p>
+          <button class="jump-btn" type="button" @click="goToGrammarDetail">进入语法详情</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -77,6 +105,9 @@ export default {
     return {
       grammar: [],
       searchText: '',
+      tokenInfoVisible: false,
+      selectedToken: null,
+      selectedGrammar: null,
     };
   },
   computed: {
@@ -104,27 +135,59 @@ export default {
       }
     },
     handleTokenClick(token) {
-      if (token.grammar_id != null) {
+      const hasWord = !!token.word_id;
+      const hasGrammar = token.grammar_id != null;
+
+      if (!hasWord && !hasGrammar) {
+        return;
+      }
+
+      if (hasWord && !hasGrammar) {
+        this.$router.push(`/word/${token.word_id}`);
+        return;
+      }
+
+      if (!hasWord && hasGrammar) {
         this.$router.push(`/grammar/${token.grammar_id}`);
         return;
       }
-      if (token.word_id) {
-        this.$router.push(`/word/${token.word_id}`);
-      }
+
+      this.selectedToken = token;
+      this.tokenInfoVisible = true;
+      this.selectedGrammar = hasGrammar
+        ? this.grammar.find((item) => item.id === token.grammar_id) || null
+        : null;
+    },
+    closeTokenInfo() {
+      this.tokenInfoVisible = false;
+      this.selectedToken = null;
+      this.selectedGrammar = null;
+    },
+    goToWordDetail() {
+      if (!this.selectedToken?.word_id) return;
+      this.$router.push(`/word/${this.selectedToken.word_id}`);
+      this.closeTokenInfo();
+    },
+    goToGrammarDetail() {
+      if (this.selectedToken?.grammar_id == null) return;
+      this.$router.push(`/grammar/${this.selectedToken.grammar_id}`);
+      this.closeTokenInfo();
     },
     tokenClasses(token) {
       return {
         clickable: token.grammar_id != null || !!token.word_id,
-        'token-word': !!token.word_id && token.grammar_id == null,
         'token-grammar': token.grammar_id != null,
       };
     },
     tokenTitle(token) {
-      if (token.grammar_id != null) {
-        return `语法 #${token.grammar_id}`;
+      if (token.word_id && token.grammar_id != null) {
+        return `${token.kana} / ${token.chinese} | 语法 #${token.grammar_id}`;
       }
       if (token.word_id) {
         return `${token.kana} / ${token.chinese}`;
+      }
+      if (token.grammar_id != null) {
+        return `语法 #${token.grammar_id}`;
       }
       return '';
     },
@@ -335,5 +398,85 @@ export default {
   text-align: center;
   color: #9ca3af;
   padding: 60px 20px;
+}
+
+.token-modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 2000;
+}
+
+.token-modal {
+  width: min(640px, 100%);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+  padding: 16px;
+}
+
+.token-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.token-modal-head h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.close-btn,
+.jump-btn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.close-btn:hover,
+.jump-btn:hover {
+  background: #f1f5f9;
+}
+
+.token-surface {
+  margin: 0 0 12px;
+  color: #1e293b;
+}
+
+.token-block {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.token-block h4 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.token-block p {
+  margin: 4px 0;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.word-block {
+  background: #f8fafc;
+}
+
+.grammar-block {
+  background: #fffdf3;
 }
 </style>
