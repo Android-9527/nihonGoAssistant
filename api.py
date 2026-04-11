@@ -389,26 +389,68 @@ def score_text_pair(left_text: str, right_text: str) -> float:
 
 
 def load_grammar_index(chapters=range(1, 26)) -> list[dict]:
-    rows = []
-    for chapter in chapters:
-        file_path = ANNO_DIR / f"chapter{chapter}_highlight_preview.json"
-        if not file_path.exists():
-            continue
-        data = json.loads(file_path.read_text(encoding="utf-8"))
-        for item in data.get("grammar_list", []):
-            gid = item.get("grammar_id")
-            if not isinstance(gid, int):
+    conn = get_db()
+    try:
+        grammar_table = pick_table(conn, "grammar")
+        if not table_exists(conn, grammar_table):
+            return []
+
+        if not column_exists(conn, grammar_table, "template") or not column_exists(conn, grammar_table, "explanation"):
+            return []
+
+        has_chapter = column_exists(conn, grammar_table, "chapter")
+        chapter_values = list(chapters) if chapters is not None else []
+
+        if has_chapter and chapter_values:
+            placeholders = ",".join(["?"] * len(chapter_values))
+            cur = conn.execute(
+                f"""
+                SELECT id, chapter, template, explanation
+                FROM {grammar_table}
+                WHERE chapter IN ({placeholders})
+                ORDER BY chapter, id
+                """,
+                tuple(chapter_values),
+            )
+        elif has_chapter:
+            cur = conn.execute(
+                f"""
+                SELECT id, chapter, template, explanation
+                FROM {grammar_table}
+                ORDER BY chapter, id
+                """
+            )
+        else:
+            cur = conn.execute(
+                f"""
+                SELECT id, NULL AS chapter, template, explanation
+                FROM {grammar_table}
+                ORDER BY id
+                """
+            )
+
+        rows = []
+        for row in cur.fetchall():
+            grammar_id = row["id"]
+            chapter = row["chapter"] if row["chapter"] is not None else 0
+            template = str(row["template"] or "").strip()
+            explanation = str(row["explanation"] or "").strip()
+
+            if not template and not explanation:
                 continue
+
             rows.append(
                 {
-                    "unique_id": f"{chapter}:{gid}",
+                    "unique_id": f"{chapter}:{grammar_id}",
                     "chapter": chapter,
-                    "grammar_id": gid,
-                    "template": str(item.get("template", "")).strip(),
-                    "explanation": str(item.get("explanation", "")).strip(),
+                    "grammar_id": grammar_id,
+                    "template": template,
+                    "explanation": explanation,
                 }
             )
-    return rows
+        return rows
+    finally:
+        conn.close()
 
 
 def retrieve_top_grammar(grammar_pattern: str, grammar_explanation: str, top_k: int = 3) -> list[dict]:
