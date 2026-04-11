@@ -14,3 +14,5 @@ datapre/language_data/
 .venv/
 pycache/
 .pyc
+.env
+.env.local

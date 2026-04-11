@@ -115,6 +115,7 @@ export default {
   methods: {
     async fetchGrammarDetail() {
       const grammarId = Number(this.$route.params.id);
+      const chapter = Number(this.$route.query.chapter);
       if (!Number.isFinite(grammarId)) {
         this.grammar = null;
         this.examples = [];
@@ -123,7 +124,10 @@ export default {
       }
 
       try {
-        const response = await fetch('/api/grammar');
+        const url = Number.isFinite(chapter)
+          ? `/api/grammar?chapter=${encodeURIComponent(chapter)}`
+          : '/api/grammar';
+        const response = await fetch(url);
         const allGrammar = await response.json();
         const cache = {};
         allGrammar.forEach((item) => {
@@ -212,6 +216,9 @@ export default {
   },
   watch: {
     '$route.params.id'() {
+      this.fetchGrammarDetail();
+    },
+    '$route.query.chapter'() {
       this.fetchGrammarDetail();
     },
   },

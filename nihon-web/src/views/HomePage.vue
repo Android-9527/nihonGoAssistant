@@ -22,6 +22,47 @@
       </article>
     </div>
 
+    <section class="grammar-search-panel">
+      <div class="grammar-search-head">
+        <h2>语法查询</h2>
+        <p>输入一句日语，自动分析并返回课本中最相关的 3 条语法。</p>
+      </div>
+
+      <div class="grammar-search-form">
+        <input
+          v-model.trim="querySentence"
+          class="grammar-input"
+          placeholder="请输入日语句子，例如：これはいくらですか"
+          @keyup.enter="runGrammarSearch"
+        />
+        <button class="action-btn" @click="runGrammarSearch" :disabled="queryLoading || !querySentence">
+          {{ queryLoading ? '查询中...' : '开始查询' }}
+        </button>
+      </div>
+
+      <p v-if="queryError" class="grammar-error">{{ queryError }}</p>
+
+      <div v-if="queryResult" class="grammar-llm-box">
+        <div><strong>LLM模板：</strong>{{ queryResult.llm?.grammar_pattern || '（空）' }}</div>
+        <div><strong>LLM解释：</strong>{{ queryResult.llm?.grammar_explanation || '（空）' }}</div>
+      </div>
+
+      <div v-if="queryResult && (queryResult.results || []).length" class="grammar-result-list">
+        <article
+          v-for="(item, idx) in queryResult.results"
+          :key="`${item.unique_id}-${idx}`"
+          class="grammar-result-card"
+          @click="openGrammarDetail(item)"
+        >
+          <div class="grammar-result-title">{{ idx + 1 }}. 第{{ item.chapter }}章 · Grammar {{ item.grammar_id }}</div>
+          <div class="grammar-result-template">{{ item.template }}</div>
+          <div class="grammar-result-score">综合分：{{ (item.final_score * 100).toFixed(2) }}%</div>
+        </article>
+      </div>
+
+      <p v-else-if="queryResult" class="empty-review">没有检索到结果，可尝试更完整的句子。</p>
+    </section>
+
     <section class="review-panel">
       <div class="review-head">
         <h2>随机复习</h2>
@@ -80,6 +121,10 @@ export default {
       currentReviewIndex: 0,
       showAnswer: false,
       unknownTokenMap: {},
+      querySentence: '',
+      queryLoading: false,
+      queryError: '',
+      queryResult: null,
     };
   },
   computed: {
@@ -144,6 +189,40 @@ export default {
         [sentenceId]: nextList,
       };
     },
+    async runGrammarSearch() {
+      const sentence = this.querySentence.trim();
+      if (!sentence) return;
+
+      this.queryLoading = true;
+      this.queryError = '';
+      this.queryResult = null;
+      try {
+        const response = await fetch('/api/grammar-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sentence }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || '查询失败');
+        }
+        this.queryResult = {
+          ...data,
+          results: (data.results || []).slice(0, 3),
+        };
+      } catch (error) {
+        this.queryError = error.message || '查询失败';
+      } finally {
+        this.queryLoading = false;
+      }
+    },
+    openGrammarDetail(item) {
+      if (!item || item.grammar_id == null) return;
+      this.$router.push({
+        path: `/grammar/${item.grammar_id}`,
+        query: item.chapter != null ? { chapter: String(item.chapter) } : {},
+      });
+    },
   },
   mounted() {
     this.fetchSentences();
@@ -206,6 +285,97 @@ export default {
   margin: 0;
   color: #475569;
   font-size: 14px;
+}
+
+.grammar-search-panel {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.grammar-search-head h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.grammar-search-head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.grammar-search-form {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.grammar-input {
+  flex: 1;
+  min-width: 260px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.grammar-error {
+  margin-top: 10px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.grammar-llm-box {
+  margin-top: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.grammar-result-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.grammar-result-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.grammar-result-card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.grammar-result-title {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.grammar-result-template {
+  margin-top: 4px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.grammar-result-score {
+  margin-top: 4px;
+  color: #0369a1;
+  font-size: 12px;
 }
 
 .review-panel {

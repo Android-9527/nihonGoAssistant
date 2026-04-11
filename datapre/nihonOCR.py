@@ -16,7 +16,6 @@ def get_client() -> genai.Client:
     api_key = (
         os.getenv("GEMINI_API_KEY")
         or os.getenv("GOOGLE_API_KEY")
-        or "AIzaSyCthY-uXtLJ8GdqYz-towq28MP1LwBO6v4"
     )
     if not api_key:
         raise ValueError("No API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY.")

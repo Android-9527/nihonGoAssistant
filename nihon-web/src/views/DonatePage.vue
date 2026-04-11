@@ -6,7 +6,14 @@
     </header>
 
     <article class="donate-card">
-      <img class="alipay-image" src="/Alipay.jpg" alt="支付宝捐赠二维码" />
+      <img
+        class="alipay-image"
+        src="/Alipay_640.jpg"
+        alt="支付宝捐赠二维码"
+        loading="eager"
+        decoding="async"
+        fetchpriority="high"
+      />
       <p class="donate-note">
         如果觉得这个 Assistant 有用就使用支付宝向作者捐赠，备注邮箱作者向你发感谢信哦。
       </p>
@@ -51,8 +58,14 @@
 
 .alipay-image {
   width: min(300px, 100%);
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  object-position: center;
+  background: #ffffff;
   border: 1px solid #d1d5db;
   border-radius: 10px;
+  padding: 8px;
+  display: block;
 }
 
 .donate-note {

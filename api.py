@@ -1,12 +1,72 @@
 import sqlite3
+import json
+import os
+import re
+import threading
+import time
+from difflib import SequenceMatcher
 from pathlib import Path
 from flask import Flask, abort, jsonify, request, send_file
 from flask_cors import CORS
+import httpx
+from google import genai
+from google.genai import types
 
 app = Flask(__name__)
 CORS(app)
 
-DB_PATH = Path(__file__).resolve().parent / "datapre" / "nihon_assistant_data.db"
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "datapre" / "nihon_assistant_data.db"
+ANNO_DIR = BASE_DIR / "datapre" / "grammar_annotate"
+
+
+def load_local_env_file(path: Path) -> None:
+    if not path.exists() or not path.is_file():
+        return
+
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key or key in os.environ:
+            continue
+
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+
+        os.environ[key] = value
+
+
+def load_local_env() -> None:
+    for candidate in (BASE_DIR / ".env", BASE_DIR / ".env.local"):
+        load_local_env_file(candidate)
+
+
+load_local_env()
+
+GENAI_MODEL = os.getenv("GENAI_MODEL", "gemini-2.5-flash")
+GENAI_API_VERSION = os.getenv("GENAI_API_VERSION", "v1beta")
+GENAI_SSL_VERIFY = os.getenv("GENAI_SSL_VERIFY", "true").strip().lower() not in {"0", "false", "no", "off"}
+GENAI_HTTP_PROXY = (
+    os.getenv("GENAI_HTTP_PROXY")
+    or os.getenv("HTTP_PROXY")
+    or os.getenv("HTTPS_PROXY")
+    or ""
+).strip() or None
+
+GRAMMAR_SEARCH_CACHE_TTL_SECONDS = int(os.getenv("GRAMMAR_SEARCH_CACHE_TTL_SECONDS", "900"))
+GRAMMAR_SEARCH_CACHE_MAX_SIZE = int(os.getenv("GRAMMAR_SEARCH_CACHE_MAX_SIZE", "300"))
+GRAMMAR_SEARCH_CACHE: dict[str, dict] = {}
+GRAMMAR_SEARCH_CACHE_LOCK = threading.Lock()
 
 
 def get_db():
@@ -213,6 +273,222 @@ def resolve_tts_file_path(raw_path: str | None, entity_type: str | None = None, 
             return cand
 
     return None
+
+
+def llm_get_api_key() -> str:
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("Missing GEMINI_API_KEY or GOOGLE_API_KEY. Set it in your environment or .env file.")
+    return api_key
+
+
+def llm_get_client() -> genai.Client:
+    http_client_kwargs = {
+        "verify": GENAI_SSL_VERIFY,
+        "trust_env": True,
+        "timeout": httpx.Timeout(60.0, connect=20.0),
+    }
+    if GENAI_HTTP_PROXY:
+        http_client_kwargs["proxy"] = GENAI_HTTP_PROXY
+
+    http_client = httpx.Client(**http_client_kwargs)
+    http_options = types.HttpOptions(apiVersion=GENAI_API_VERSION, httpxClient=http_client)
+    return genai.Client(api_key=llm_get_api_key(), http_options=http_options)
+
+
+def llm_build_prompt(sentence: str) -> str:
+    return (
+        "你是日语语法分析助手。\n"
+        "请根据输入句子，输出最核心的语法模板和语法解释。\n"
+        "只输出严格 JSON，不要 markdown，不要额外文本。\n"
+        "\n"
+        "输出格式必须是：\n"
+        "{\n"
+        '  "grammar_pattern": "...",\n'
+        '  "grammar_explanation": "..."\n'
+        "}\n"
+        "\n"
+        "要求：\n"
+        "1. grammar_pattern 用语法模板形式。\n"
+        "2. grammar_explanation 用中文简洁解释。\n"
+        "3. 若句子语法不明显，也必须返回两个字段。\n"
+        "\n"
+        f"句子：{sentence}"
+    )
+
+
+def llm_strip_code_fence(text: str) -> str:
+    text = (text or "").strip()
+    if not text.startswith("```"):
+        return text
+
+    lines = text.splitlines()
+    if lines and lines[0].startswith("```"):
+        lines = lines[1:]
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+    if lines and lines[0].strip().lower() == "json":
+        lines = lines[1:]
+    return "\n".join(lines).strip()
+
+
+def llm_extract_json_block(text: str) -> str:
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return text
+    return text[start : end + 1]
+
+
+def llm_parse_json_response(text: str) -> dict:
+    cleaned = llm_strip_code_fence(text)
+    try:
+        data = json.loads(cleaned)
+    except json.JSONDecodeError:
+        data = json.loads(llm_extract_json_block(cleaned))
+
+    if not isinstance(data, dict):
+        raise ValueError("Model response is not a JSON object")
+
+    return {
+        "grammar_pattern": str(data.get("grammar_pattern", "")).strip(),
+        "grammar_explanation": str(data.get("grammar_explanation", "")).strip(),
+    }
+
+
+def llm_call(sentence: str) -> dict:
+    client = llm_get_client()
+    prompt = llm_build_prompt(sentence)
+    config_kwargs = {"temperature": 0}
+    if GENAI_API_VERSION.lower() != "v1":
+        config_kwargs["responseMimeType"] = "application/json"
+
+    response = client.models.generate_content(
+        model=GENAI_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(**config_kwargs),
+    )
+    return llm_parse_json_response(response.text or "")
+
+
+def normalize_text(text: str) -> str:
+    text = (text or "").strip()
+    text = re.sub(r"[₁₂₃]", "", text)
+    text = re.sub(r"[()（）\[\]【】{}〈〉《》]", "", text)
+    text = re.sub(r"[〜~～]", "", text)
+    text = re.sub(r"\s+", "", text)
+    return text
+
+
+def score_text_pair(left_text: str, right_text: str) -> float:
+    left = normalize_text(left_text)
+    right = normalize_text(right_text)
+    if not left or not right:
+        return 0.0
+    return SequenceMatcher(None, left, right).ratio()
+
+
+def load_grammar_index(chapters=range(1, 26)) -> list[dict]:
+    rows = []
+    for chapter in chapters:
+        file_path = ANNO_DIR / f"chapter{chapter}_highlight_preview.json"
+        if not file_path.exists():
+            continue
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+        for item in data.get("grammar_list", []):
+            gid = item.get("grammar_id")
+            if not isinstance(gid, int):
+                continue
+            rows.append(
+                {
+                    "unique_id": f"{chapter}:{gid}",
+                    "chapter": chapter,
+                    "grammar_id": gid,
+                    "template": str(item.get("template", "")).strip(),
+                    "explanation": str(item.get("explanation", "")).strip(),
+                }
+            )
+    return rows
+
+
+def retrieve_top_grammar(grammar_pattern: str, grammar_explanation: str, top_k: int = 3) -> list[dict]:
+    template_weight = 0.6
+    explanation_weight = 0.4
+    template_min = 0.2
+    explanation_min = 0.1
+
+    index = load_grammar_index()
+    results = []
+    for item in index:
+        t_score = score_text_pair(grammar_pattern, item["template"])
+        e_score = score_text_pair(grammar_explanation, item["explanation"])
+
+        if t_score < template_min and e_score < explanation_min:
+            continue
+
+        final_score = t_score * template_weight + e_score * explanation_weight
+        results.append(
+            {
+                "unique_id": item["unique_id"],
+                "chapter": item["chapter"],
+                "grammar_id": item["grammar_id"],
+                "template": item["template"],
+                "explanation": item["explanation"],
+                "template_score": t_score,
+                "explanation_score": e_score,
+                "final_score": final_score,
+            }
+        )
+
+    results.sort(key=lambda x: x["final_score"], reverse=True)
+    return results[:top_k]
+
+
+def grammar_search_cache_key(sentence: str) -> str:
+    return re.sub(r"\s+", " ", (sentence or "").strip())
+
+
+def grammar_search_cache_get(sentence: str) -> dict | None:
+    key = grammar_search_cache_key(sentence)
+    now = time.time()
+    with GRAMMAR_SEARCH_CACHE_LOCK:
+        entry = GRAMMAR_SEARCH_CACHE.get(key)
+        if not entry:
+            return None
+        if entry["expires_at"] <= now:
+            GRAMMAR_SEARCH_CACHE.pop(key, None)
+            return None
+
+        # Keep recently used entries newer in insertion order.
+        GRAMMAR_SEARCH_CACHE.pop(key, None)
+        GRAMMAR_SEARCH_CACHE[key] = entry
+        return entry["value"]
+
+
+def grammar_search_cache_set(sentence: str, value: dict) -> None:
+    key = grammar_search_cache_key(sentence)
+    now = time.time()
+    expires_at = now + max(1, GRAMMAR_SEARCH_CACHE_TTL_SECONDS)
+
+    with GRAMMAR_SEARCH_CACHE_LOCK:
+        # Drop expired entries first.
+        expired_keys = [
+            cache_key for cache_key, cache_entry in GRAMMAR_SEARCH_CACHE.items() if cache_entry["expires_at"] <= now
+        ]
+        for expired_key in expired_keys:
+            GRAMMAR_SEARCH_CACHE.pop(expired_key, None)
+
+        GRAMMAR_SEARCH_CACHE.pop(key, None)
+        GRAMMAR_SEARCH_CACHE[key] = {
+            "expires_at": expires_at,
+            "value": value,
+        }
+
+        while len(GRAMMAR_SEARCH_CACHE) > max(1, GRAMMAR_SEARCH_CACHE_MAX_SIZE):
+            oldest_key = next(iter(GRAMMAR_SEARCH_CACHE), None)
+            if oldest_key is None:
+                break
+            GRAMMAR_SEARCH_CACHE.pop(oldest_key, None)
 
 
 @app.route("/api/words", methods=["GET"])
@@ -457,6 +733,33 @@ def get_tts_audio():
         return send_file(file_path, mimetype=mimetype, conditional=True)
     finally:
         conn.close()
+
+
+@app.route("/api/grammar-search", methods=["POST"])
+def grammar_search():
+    payload = request.get_json(silent=True) or {}
+    sentence = str(payload.get("sentence", "")).strip()
+    if not sentence:
+        return jsonify({"error": "sentence is required"}), 400
+
+    try:
+        cached_value = grammar_search_cache_get(sentence)
+        if cached_value is not None:
+            return jsonify(cached_value)
+
+        llm_result = llm_call(sentence)
+        grammar_pattern = llm_result.get("grammar_pattern", "")
+        grammar_explanation = llm_result.get("grammar_explanation", "")
+        matches = retrieve_top_grammar(grammar_pattern, grammar_explanation, top_k=3)
+        response_data = {
+            "sentence": sentence,
+            "llm": llm_result,
+            "results": matches,
+        }
+        grammar_search_cache_set(sentence, response_data)
+        return jsonify(response_data)
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 if __name__ == "__main__":
