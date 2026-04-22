@@ -2,17 +2,11 @@
   <div class="grammar-container">
     <div class="grammar-header">
       <h2>语法学习</h2>
-      <input
-        v-model="searchText"
-        type="text"
-        placeholder="搜索语法..."
-        class="search-input"
-      />
     </div>
 
     <div class="grammar-list">
       <div
-        v-for="point in filteredGrammar"
+        v-for="point in grammar"
         :key="point.id"
         class="grammar-card"
       >
@@ -63,8 +57,8 @@
       </div>
     </div>
 
-    <p v-if="filteredGrammar.length === 0" class="no-results">
-      未找到匹配的语法
+    <p v-if="grammar.length === 0" class="no-results">
+      暂无语法
     </p>
 
     <div v-if="tokenInfoVisible" class="token-modal-mask" @click.self="closeTokenInfo">
@@ -104,22 +98,10 @@ export default {
   data() {
     return {
       grammar: [],
-      searchText: '',
       tokenInfoVisible: false,
       selectedToken: null,
       selectedGrammar: null,
     };
-  },
-  computed: {
-    filteredGrammar() {
-      return this.grammar.filter(point => {
-        const search = this.searchText.toLowerCase();
-        return (
-          point.template.toLowerCase().includes(search) ||
-          point.explanation.toLowerCase().includes(search)
-        );
-      });
-    },
   },
   methods: {
     async fetchGrammar() {
@@ -224,21 +206,6 @@ export default {
 .grammar-header h2 {
   margin: 0;
   color: #1f2937;
-}
-
-.search-input {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  flex: 1;
-  min-width: 200px;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 .grammar-list {

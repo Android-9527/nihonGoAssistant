@@ -6,7 +6,6 @@ export default {
     return {
       words: [],
       displayWords: [],
-      searchText: '',
       hideFields: {
         kana: false,
         kanji: false,
@@ -15,18 +14,6 @@ export default {
       isShuffled: false,
       originalWords: [],
     };
-  },
-  computed: {
-    filteredWords() {
-      return this.displayWords.filter(word => {
-        const search = this.searchText.toLowerCase();
-        return (
-          word.kana.toLowerCase().includes(search) ||
-          word.kanji.toLowerCase().includes(search) ||
-          word.chinese.toLowerCase().includes(search)
-        );
-      });
-    },
   },
   methods: {
     async fetchWords() {
@@ -88,12 +75,6 @@ export default {
     <div class="words-header">
       <h2>单词学习</h2>
       <div class="controls">
-        <input 
-          v-model="searchText" 
-          type="text" 
-          placeholder="搜索单词..."
-          class="search-input"
-        />
         <button @click="toggleHide('kana')" :class="{ active: hideFields.kana }" class="btn">
           {{ hideFields.kana ? '显示假名' : '隐藏假名' }}
         </button>
@@ -111,7 +92,7 @@ export default {
 
     <div class="words-list">
       <div 
-        v-for="(word, idx) in filteredWords" 
+        v-for="(word, idx) in displayWords" 
         :key="word.id"
         @click="goToWordDetail(word.id)"
         class="word-item"
@@ -133,8 +114,8 @@ export default {
       </div>
     </div>
 
-    <p v-if="filteredWords.length === 0" class="no-results">
-      未找到匹配的单词
+    <p v-if="displayWords.length === 0" class="no-results">
+      暂无单词
     </p>
   </div>
 </template>
@@ -160,21 +141,6 @@ export default {
   gap: 10px;
   flex-wrap: wrap;
   align-items: center;
-}
-
-.search-input {
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 14px;
-  flex: 1;
-  min-width: 200px;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 4px rgba(59, 130, 246, 0.2);
 }
 
 .btn {

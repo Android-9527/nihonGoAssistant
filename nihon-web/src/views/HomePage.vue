@@ -22,6 +22,46 @@
       </article>
     </div>
 
+    <section class="word-search-panel">
+      <div class="word-search-head">
+        <h2>单词检索</h2>
+        <p>支持假名、汉字、中文检索，点击可进入单词详情。</p>
+      </div>
+
+      <div class="word-search-form">
+        <input
+          v-model.trim="wordSearchText"
+          class="word-input"
+          placeholder="例如：相撲 / すもう / 相扑"
+        />
+        <button class="action-btn" @click="clearWordSearch" :disabled="!wordSearchText">
+          清空
+        </button>
+      </div>
+
+      <div v-if="wordSearchError" class="word-search-error">{{ wordSearchError }}</div>
+
+      <div v-else-if="wordSearchText" class="word-result-list">
+        <article
+          v-for="(word, idx) in filteredWords"
+          :key="word.id"
+          class="word-result-card"
+          @click="openWordDetail(word)"
+        >
+          <div class="word-result-order">{{ idx + 1 }}</div>
+          <div class="word-result-main">
+            <div class="word-result-kana">{{ word.kana }}</div>
+            <div class="word-result-meta">
+              <span>汉字：{{ word.kanji && word.kanji !== '/' ? word.kanji : '（无）' }}</span>
+              <span>中文：{{ word.chinese }}</span>
+            </div>
+          </div>
+          <div class="word-result-chapter">第{{ word.chapter }}章</div>
+        </article>
+        <p v-if="!filteredWords.length" class="empty-review">未检索到匹配单词</p>
+      </div>
+    </section>
+
     <section class="grammar-search-panel">
       <div class="grammar-search-head">
         <h2>语法查询</h2>
@@ -125,6 +165,9 @@ export default {
       queryLoading: false,
       queryError: '',
       queryResult: null,
+      allWords: [],
+      wordSearchText: '',
+      wordSearchError: '',
     };
   },
   computed: {
@@ -135,6 +178,19 @@ export default {
       const sentenceId = this.currentSentence?.id;
       if (!sentenceId || !this.unknownTokenMap[sentenceId]) return 0;
       return this.unknownTokenMap[sentenceId].length;
+    },
+    filteredWords() {
+      const keyword = this.wordSearchText.trim().toLowerCase();
+      if (!keyword) return [];
+
+      return this.allWords
+        .filter((word) => {
+          const kana = (word.kana || '').toLowerCase();
+          const kanji = (word.kanji || '').toLowerCase();
+          const chinese = (word.chinese || '').toLowerCase();
+          return kana.includes(keyword) || kanji.includes(keyword) || chinese.includes(keyword);
+        })
+        .slice(0, 20);
     },
   },
   methods: {
@@ -149,6 +205,23 @@ export default {
       } catch (error) {
         console.error('Failed to fetch random review sentences:', error);
       }
+    },
+    async fetchWords() {
+      this.wordSearchError = '';
+      try {
+        const response = await fetch('/api/words');
+        if (!response.ok) throw new Error('获取单词失败');
+        this.allWords = await response.json();
+      } catch (error) {
+        this.wordSearchError = error.message || '获取单词失败';
+      }
+    },
+    clearWordSearch() {
+      this.wordSearchText = '';
+    },
+    openWordDetail(word) {
+      if (!word || word.id == null) return;
+      this.$router.push(`/word/${word.id}`);
     },
     pickRandomSentences() {
       const pool = [...this.allSentences];
@@ -226,6 +299,7 @@ export default {
   },
   mounted() {
     this.fetchSentences();
+    this.fetchWords();
   },
 };
 </script>
@@ -285,6 +359,110 @@ export default {
   margin: 0;
   color: #475569;
   font-size: 14px;
+}
+
+.word-search-panel {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.word-search-head h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.word-search-head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.word-search-form {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.word-input {
+  flex: 1;
+  min-width: 260px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.word-search-error {
+  margin-top: 10px;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.word-result-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.word-result-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.word-result-card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.word-result-order {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.word-result-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.word-result-kana {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.word-result-meta {
+  margin-top: 2px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 12px;
+}
+
+.word-result-chapter {
+  color: #0369a1;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .grammar-search-panel {

@@ -5,7 +5,6 @@ export default {
   data() {
     return {
       sentences: [],
-      searchText: '',
       tokenInfoVisible: false,
       selectedToken: null,
       selectedGrammar: null,
@@ -14,22 +13,11 @@ export default {
     };
   },
   computed: {
-    filteredSentences() {
-      return this.sentences.filter(sentence => {
-        const search = this.searchText.toLowerCase();
-        return (
-          sentence.japanese.toLowerCase().includes(search) ||
-          sentence.chinese.toLowerCase().includes(search) ||
-          (sentence.content || '').toLowerCase().includes(search) ||
-          (sentence.group_title || '').toLowerCase().includes(search)
-        );
-      });
-    },
     groupedSentenceBlocks() {
       const groups = [];
       const map = new Map();
 
-      this.filteredSentences.forEach((sentence) => {
+      this.sentences.forEach((sentence) => {
         const key = sentence.group_id ?? sentence.grid ?? sentence.id;
         if (!map.has(key)) {
           const group = { id: key, sentences: [] };
@@ -176,12 +164,6 @@ export default {
   <div class="sentences-container">
     <div class="sentences-header">
       <h2>例句学习</h2>
-      <input 
-        v-model="searchText" 
-        type="text" 
-        placeholder="搜索例句..."
-        class="search-input"
-      />
     </div>
 
     <div class="sentences-list">
@@ -301,8 +283,8 @@ export default {
       </div>
     </div>
 
-    <p v-if="filteredSentences.length === 0" class="no-results">
-      未找到匹配的例句
+    <p v-if="groupedSentenceBlocks.length === 0" class="no-results">
+      暂无例句
     </p>
 
     <div v-if="tokenInfoVisible" class="token-modal-mask" @click.self="closeTokenInfo">

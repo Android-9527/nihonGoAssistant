@@ -160,7 +160,25 @@ def fetch_word_rows(conn: sqlite3.Connection, chapter_start: int, chapter_end: i
     ).fetchall()
 
 
-def fetch_sentence_rows(conn: sqlite3.Connection, chapter_start: int, chapter_end: int) -> list[tuple]:
+def fetch_sentence_rows(
+    conn: sqlite3.Connection,
+    chapter_start: int,
+    chapter_end: int,
+    sentence_ids: list[int] | None = None,
+) -> list[tuple]:
+    if sentence_ids:
+        placeholders = ",".join("?" for _ in sentence_ids)
+        sql = f"""
+        SELECT id, chapter, jp_sentence
+        FROM sentence
+        WHERE chapter BETWEEN ? AND ?
+          AND id IN ({placeholders})
+          AND TRIM(COALESCE(jp_sentence, '')) <> ''
+        ORDER BY chapter, id
+        """
+        params: tuple = (chapter_start, chapter_end, *sentence_ids)
+        return conn.execute(sql, params).fetchall()
+
     return conn.execute(
         """
         SELECT id, chapter, jp_sentence
@@ -178,6 +196,7 @@ def run_batch(
     chapter_end: int,
     sleep_seconds: float,
     max_retries: int,
+    sentence_ids: list[int] | None = None,
 ) -> None:
     if not DB_PATH.exists():
         raise FileNotFoundError(f"DB not found: {DB_PATH}")
@@ -241,7 +260,7 @@ def run_batch(
                 time.sleep(sleep_seconds)
 
         if target in ("sentence", "both"):
-            rows = fetch_sentence_rows(conn, chapter_start, chapter_end)
+            rows = fetch_sentence_rows(conn, chapter_start, chapter_end, sentence_ids=sentence_ids)
             print(f"开始处理 sentence，共 {len(rows)} 条")
             for sentence_id, chapter, jp_sentence in rows:
                 total += 1
@@ -326,7 +345,17 @@ if __name__ == "__main__":
     parser.add_argument("--chapter-end", type=int, default=25)
     parser.add_argument("--sleep", type=float, default=0.25)
     parser.add_argument("--max-retries", type=int, default=4)
+    parser.add_argument(
+        "--sentence-ids",
+        type=str,
+        default="",
+        help="仅处理指定句子ID，逗号分隔，如 5799,5800,5801",
+    )
     args = parser.parse_args()
+
+    sentence_ids: list[int] | None = None
+    if args.sentence_ids.strip():
+        sentence_ids = [int(x.strip()) for x in args.sentence_ids.split(",") if x.strip()]
 
     if args.mode == "single":
         run_single_mode()
@@ -337,4 +366,5 @@ if __name__ == "__main__":
             chapter_end=args.chapter_end,
             sleep_seconds=args.sleep,
             max_retries=args.max_retries,
+            sentence_ids=sentence_ids,
         )
