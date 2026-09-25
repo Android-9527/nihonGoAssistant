@@ -260,6 +260,7 @@ export default {
   color: #4b5563;
   font-size: 14px;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .examples-section h4 {
@@ -437,6 +438,7 @@ export default {
   margin: 4px 0;
   color: #334155;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .word-block {

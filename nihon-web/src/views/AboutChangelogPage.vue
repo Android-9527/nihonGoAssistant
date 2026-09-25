@@ -5,33 +5,41 @@
       <p>记录功能迭代与体验优化。</p>
     </header>
 
-    <article class="card">
-      <h2>v0.3.0</h2>
-      <ul class="list">
-        <li>课文模块支持 single / dialogue / essay 三类分组展示</li>
-        <li>句子组支持标题显示，兼容 sentence_group.title</li>
-        <li>单词、句子、语法例句由悬浮播音改为点击按钮播音</li>
-      </ul>
-    </article>
+    <p v-if="loadError" class="load-error">{{ loadError }}</p>
+    <p v-else-if="!versions.length" class="load-error">暂无更新记录</p>
 
-    <article class="card">
-      <h2>v0.2.0</h2>
+    <article v-for="item in versions" :key="item.version" class="card">
+      <div class="card-head">
+        <h2>{{ item.version }}</h2>
+        <span v-if="item.date" class="card-date">{{ item.date }}</span>
+      </div>
       <ul class="list">
-        <li>首页新增随机复习区域，支持不懂分词点击标记</li>
-        <li>新增我的单词/我的语法二级入口（本子 + 复习）</li>
-        <li>语法与单词 token 支持点击跳转详情页</li>
-      </ul>
-    </article>
-
-    <article class="card">
-      <h2>v0.1.0</h2>
-      <ul class="list">
-        <li>完成课本、单词、语法、课文基础学习流</li>
-        <li>完成后端词句语法查询 API 与前端页面联调</li>
+        <li v-for="(change, idx) in item.changes" :key="idx">{{ change }}</li>
       </ul>
     </article>
   </section>
 </template>
+
+<script>
+export default {
+  data() {
+    return {
+      versions: [],
+      loadError: '',
+    };
+  },
+  async mounted() {
+    try {
+      const response = await fetch('/data/changelog.json');
+      if (!response.ok) throw new Error('加载失败');
+      const data = await response.json();
+      this.versions = Array.isArray(data?.versions) ? data.versions : [];
+    } catch (error) {
+      this.loadError = '更新日志加载失败';
+    }
+  },
+};
+</script>
 
 <style scoped>
 .about-page {
@@ -64,9 +72,26 @@
   padding: 18px;
 }
 
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 .card h2 {
-  margin: 0 0 8px;
+  margin: 0;
   color: #0f172a;
+}
+
+.card-date {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 999px;
+  font-size: 12px;
 }
 
 .list {
@@ -74,5 +99,15 @@
   padding-left: 18px;
   color: #334155;
   line-height: 1.8;
+}
+
+.load-error {
+  margin: 0;
+  padding: 40px 20px;
+  text-align: center;
+  color: #9ca3af;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
 }
 </style>

@@ -84,7 +84,7 @@
 
       <div v-if="queryResult" class="grammar-llm-box">
         <div><strong>LLM模板：</strong>{{ queryResult.llm?.grammar_pattern || '（空）' }}</div>
-        <div><strong>LLM解释：</strong>{{ queryResult.llm?.grammar_explanation || '（空）' }}</div>
+        <div class="llm-explanation-line"><strong>LLM解释：</strong>{{ queryResult.llm?.grammar_explanation || '（空）' }}</div>
       </div>
 
       <div v-if="queryResult && (queryResult.results || []).length" class="grammar-result-list">
@@ -517,6 +517,10 @@ export default {
   gap: 8px;
   font-size: 13px;
   color: #334155;
+}
+
+.llm-explanation-line {
+  white-space: pre-line;
 }
 
 .grammar-result-list {

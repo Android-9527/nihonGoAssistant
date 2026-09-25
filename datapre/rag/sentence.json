@@ -1,0 +1,785 @@
+{
+  "chapter": 2,
+  "model": "gemini-2.5-flash",
+  "generated_at": "2026-04-09T16:21:54.181390+00:00",
+  "sentence_count": 51,
+  "results": [
+    {
+      "sentence_id": 43,
+      "sentence": "これは辞書です。",
+      "chinese": "这是词典。",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示“N1是N2”。「は」是提示主题的助词，「です」是礼貌的判断助动词，相当于汉语的“是”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 44,
+      "sentence": "それはわたしの傘です。",
+      "chinese": "那是我的伞。",
+      "grammar_points": [
+        {
+          "template": "Noun1 は Noun2 です",
+          "explanation": "表示“Noun1是Noun2”。「は」是提示主题的助词，「です」是礼貌的判断助动词，用于肯定句句末。"
+        },
+        {
+          "template": "Noun1 の Noun2",
+          "explanation": "助词「の」连接两个名词，表示所属关系，即“Noun1的Noun2”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 45,
+      "sentence": "この本はわたしのです。",
+      "chinese": "这本书是我的。",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示“N1是N2”这一基本判断句型。其中「は」是提示主题的助词，「です」是表示肯定的判断助动词，使句子变得礼貌。"
+        },
+        {
+          "template": "N の",
+          "explanation": "助词「の」用于连接两个名词，表示所属、修饰等关系。在此句中，「わたしのです」表示“是我的”，「の」代替了被省略的名词，表示所属关系。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 46,
+      "sentence": "これはボールペンですか。",
+      "chinese": "这是圆珠笔吗？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "「は」是主题助词，表示N1是句子的主题，N1是N2。"
+        },
+        {
+          "template": "N です",
+          "explanation": "「です」是礼貌体判断助动词，表示“是”，用于肯定句中，使句子更礼貌。"
+        },
+        {
+          "template": "Sentence か",
+          "explanation": "「か」是疑问助词，放在句末将陈述句变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 47,
+      "sentence": "……はい、そうです。",
+      "chinese": "……是的，没错。",
+      "grammar_points": [
+        {
+          "template": "そうです",
+          "explanation": "表示“是这样”、“没错”、“是的”。常用于肯定回答或确认。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 48,
+      "sentence": "それはノートですか。",
+      "chinese": "那是笔记本吗？",
+      "grammar_points": [
+        {
+          "template": "AはBです",
+          "explanation": "表示「A是B」的肯定判断句型，は是提示主题的助词，です是礼貌的判断助动词。"
+        },
+        {
+          "template": "〜か",
+          "explanation": "句尾加上助词「か」表示疑问，将陈述句变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 49,
+      "sentence": "……いいえ、[これは]手帳です。",
+      "chinese": "……不，[这是]记事本。",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "This is a basic sentence pattern used to state that N1 is N2. 「は」 (wa) is the topic particle, marking the subject of the sentence. 「です」 (desu) is the polite copula, meaning \"is/am/are\"."
+        }
+      ]
+    },
+    {
+      "sentence_id": 50,
+      "sentence": "それは何ですか。",
+      "chinese": "那是什么？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "「は」是提示助词，用于提示句子的主题或主语。"
+        },
+        {
+          "template": "N です",
+          "explanation": "「です」是判断助动词「だ」的礼貌形，表示判断、断定，用于礼貌的肯定句结尾。"
+        },
+        {
+          "template": "Sentence か",
+          "explanation": "「か」是疑问助词，置于句末表示疑问，将陈述句变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 51,
+      "sentence": "名刺です。",
+      "chinese": "是名片。",
+      "grammar_points": [
+        {
+          "template": "名詞＋です",
+          "explanation": "表示判断、断定，是礼貌体。用于肯定句句末。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 52,
+      "sentence": "これは「9」ですか、「7」ですか。",
+      "chinese": "这是“9”还是“7”？",
+      "grammar_points": [
+        {
+          "template": "A ですか、B ですか",
+          "explanation": "用于提出选择性问题，询问“是A，还是B？”。"
+        },
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示“N1是N2”的基本肯定句结构。"
+        },
+        {
+          "template": "〜か",
+          "explanation": "疑问助词，用于将句子变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 53,
+      "sentence": "……「9」です。",
+      "chinese": "……是“9”。",
+      "grammar_points": [
+        {
+          "template": "名詞 + です",
+          "explanation": "「です」是日语中最基本的礼貌体判断助动词，用于肯定句，表示“是”、“就是”的意思，使句子变得礼貌。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 54,
+      "sentence": "それは何の雑誌ですか。",
+      "chinese": "那是什么杂志？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 ですか",
+          "explanation": "这是日语中最基本的疑问句结构，用于询问“N1是N2吗？”或“N1是什么？”。其中「は」是主题助词，「です」是礼貌的判断助动词，「か」是疑问助词。"
+        },
+        {
+          "template": "何 の Noun",
+          "explanation": "这个结构用于询问名词的种类、性质或内容。其中「何」是疑问词“什么”，「の」是格助词，连接「何」和名词，表示所属或修饰关系。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 55,
+      "sentence": "……コンピューターの雑誌です。",
+      "chinese": "……是电脑杂志。",
+      "grammar_points": [
+        {
+          "template": "N1 の N2",
+          "explanation": "助詞「の」连接两个名词，表示N1修饰N2，说明N2的种类、内容、所属等。此处表示“关于电脑的杂志”或“电脑杂志”。"
+        },
+        {
+          "template": "N です",
+          "explanation": "助動詞「です」是礼貌体判断助动词，表示“是”，用于肯定句句末，使句子礼貌化。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 56,
+      "sentence": "あれはだれのかばんですか。",
+      "chinese": "那个是谁的包？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です/ですか",
+          "explanation": "用于陈述或疑问句，表示N1的身份、性质或所属。"
+        },
+        {
+          "template": "N1 の N2",
+          "explanation": "表示所属关系，N1是N2的所有者。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 57,
+      "sentence": "佐藤さんのかばんです。",
+      "chinese": "是佐藤先生的包。",
+      "grammar_points": [
+        {
+          "template": "N1 の N2",
+          "explanation": "助词「の」连接两个名词，表示N1是N2的所有者或N1修饰N2。"
+        },
+        {
+          "template": "N です",
+          "explanation": "助动词「です」用于肯定句句尾，表示“是”，使句子礼貌。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 58,
+      "sentence": "これはミラーさんのですか。",
+      "chinese": "这是米勒先生的吗？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "用于表示“N1是N2”这一判断句型。"
+        },
+        {
+          "template": "N の",
+          "explanation": "助词「の」表示所属关系，或将名词N用作修饰语，此处指“ミラーさんのもの”（米勒先生的东西）。"
+        },
+        {
+          "template": "〜か",
+          "explanation": "接在句末表示疑问。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 59,
+      "sentence": "……いいえ、わたしのじゃありません。",
+      "chinese": "……不，不是我的。",
+      "grammar_points": [
+        {
+          "template": "名詞 + の",
+          "explanation": "助詞「の」连接名词，表示所属、修饰或同位关系。在这里表示所属，相当于“我的”。"
+        },
+        {
+          "template": "名詞 + じゃありません",
+          "explanation": "「じゃありません」是「ではありません」的口语缩略形式，表示否定，意为“不是……”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 60,
+      "sentence": "このかぎはだれのですか。",
+      "chinese": "这把钥匙是谁的？",
+      "grammar_points": [
+        {
+          "template": "N1はN2です",
+          "explanation": "表示N1是N2。用于肯定句，表示判断、说明等。在本句中，「このかぎはだれのです」是其基本结构。"
+        },
+        {
+          "template": "Nの",
+          "explanation": "助词「の」可以表示所属关系（N1のN2：N1的N2），也可以代指前文提到的事物或省略的词语。在「だれのですか」中，「の」代指物品，表示“是谁的（东西）”。"
+        },
+        {
+          "template": "Sentenceか",
+          "explanation": "句末助词，表示疑问，将陈述句变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 61,
+      "sentence": "……わたしのです。",
+      "chinese": "……是我的。",
+      "grammar_points": [
+        {
+          "template": "～の",
+          "explanation": "助词，表示所属关系，相当于汉语的“的”。在此句中，它也起到了代词的作用，指代“我的东西”。"
+        },
+        {
+          "template": "～です",
+          "explanation": "礼貌的判断助动词，表示“是”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 62,
+      "sentence": "はい。どなたですか。",
+      "chinese": "是。请问您是哪位？",
+      "grammar_points": [
+        {
+          "template": "名詞 + です",
+          "explanation": "礼貌的判断助动词，用于名词句的肯定形式，表示“是…”，使句子变得礼貌。"
+        },
+        {
+          "template": "文 + か",
+          "explanation": "疑问助词，接在句末，将陈述句变为疑问句，表示提问。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 63,
+      "sentence": "408のサントスです。",
+      "chinese": "我是408室的桑托斯。",
+      "grammar_points": [
+        {
+          "template": "N1 の N2",
+          "explanation": "助词「の」连接两个名词，表示所属、关联或修饰关系。在此句中，表示“408的（某人）サントス”，可能指房间号或编号。"
+        },
+        {
+          "template": "N です",
+          "explanation": "句末助动词「です」，表示判断、断定，使句子礼貌化。用于陈述事实或身份。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 64,
+      "sentence": "こんにちは。サントスです。",
+      "chinese": "你好。我是桑托斯。",
+      "grammar_points": [
+        {
+          "template": "Noun + です",
+          "explanation": "用于礼貌地表示身份、属性或状态。相当于汉语的“是”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 65,
+      "sentence": "これからお世話になります。",
+      "chinese": "今后请多关照。",
+      "grammar_points": [
+        {
+          "template": "お世話になります",
+          "explanation": "惯用表达，表示“今后将承蒙您的关照/帮助”。常用于初次见面、开始一段新的合作关系或搬入新居时，表达对对方未来帮助的感谢或期待。"
+        },
+        {
+          "template": "Nになります",
+          "explanation": "表示状态或性质的变化，成为某种状态或身份。在这里，'お世話'被视为一种状态或情况，表示进入被关照的状态。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 66,
+      "sentence": "どうぞよろしくお願いします。",
+      "chinese": "请多多关照。",
+      "grammar_points": [
+        {
+          "template": "どうぞ + [动词]",
+          "explanation": "副词「どうぞ」用于礼貌地提出请求、邀请或建议，表示“请”、“务必”。它能使语气更加客气和委婉。"
+        },
+        {
+          "template": "[动词连用形] + ます",
+          "explanation": "动词的礼貌形（敬体），表示尊敬或客气，用于日常对话和正式场合。"
+        },
+        {
+          "template": "どうぞよろしくお願いします。",
+          "explanation": "这是一个常用的寒暄语，字面意思是“请您好好地关照/拜托”，常用于初次见面时请求对方的关照、帮助或合作，或在信件、邮件结尾表示感谢和期待。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 67,
+      "sentence": "こちらこそよろしくお願いします。",
+      "chinese": "我才要请您多多关照呢。",
+      "grammar_points": [
+        {
+          "template": "名詞/句 + こそ",
+          "explanation": "强调前面的词语，表示“正是…”，“才…”。常用于回应对方的感谢或请求，表示“不，正是我才应该…”。"
+        },
+        {
+          "template": "よろしくお願いします",
+          "explanation": "这是一个非常常用的客套语，用于初次见面、请求帮助、拜托事情或开始新的合作关系时，表示“请多关照”、“请多多指教”、“拜托了”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 68,
+      "sentence": "あのう、これ、コーヒーです。どうぞ。",
+      "chinese": "那个，这是咖啡。请用。",
+      "grammar_points": [
+        {
+          "template": "Noun + です",
+          "explanation": "表示礼貌地说明某物是什么（A是B）。它作为礼貌的系动词使用。"
+        },
+        {
+          "template": "どうぞ",
+          "explanation": "一个礼貌的表达，用于提供某物、邀请某人做某事或鼓励某人先行。它表示“请”、“请用”、“请便”等。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 69,
+      "sentence": "どうもありがとうございます。",
+      "chinese": "非常感谢。",
+      "grammar_points": [
+        {
+          "template": "〜ございます",
+          "explanation": "表示礼貌和郑重，是「ある」或「です」的丁宁语（敬体）形式。在此句中，与「ありがとう」结合，构成非常礼貌的感谢表达。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 70,
+      "sentence": "それは 辞書ですか。",
+      "chinese": "那是字典吗？",
+      "grammar_points": [
+        {
+          "template": "Noun ですか",
+          "explanation": "用于构成疑问句，询问“是…吗？”"
+        }
+      ]
+    },
+    {
+      "sentence_id": 71,
+      "sentence": "これは だれの 傘ですか。",
+      "chinese": "这是谁的伞？",
+      "grammar_points": [
+        {
+          "template": "N は ...",
+          "explanation": "助词「は」用于标记句子的主题或话题。"
+        },
+        {
+          "template": "N1 の N2",
+          "explanation": "助词「の」用于连接两个名词，表示所属关系（N1的N2）或修饰关系。在此句中，表示“谁的伞”。"
+        },
+        {
+          "template": "N です",
+          "explanation": "助动词「です」是礼貌的判断助动词，相当于汉语的“是”。"
+        },
+        {
+          "template": "Sentence か",
+          "explanation": "助词「か」放在句末，表示疑问，将陈述句变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 72,
+      "sentence": "この 本は わたしのです。",
+      "chinese": "这本书是我的。",
+      "grammar_points": [
+        {
+          "template": "この + Noun",
+          "explanation": "指示代词「この」用于修饰名词，表示“这个/这边的...”。"
+        },
+        {
+          "template": "Noun は",
+          "explanation": "助词「は」用于提示句子的主题或主语。"
+        },
+        {
+          "template": "Noun のです",
+          "explanation": "「Noun のです」表示所有格，其中「の」代指前面提到的名词，意为“是...的”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 73,
+      "sentence": "あの 方は どなたですか。",
+      "chinese": "那一位是谁？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示“N1是N2”的肯定句型，其中「は」是主题助词，「です」是礼貌体判断助动词。"
+        },
+        {
+          "template": "疑問詞 + ですか",
+          "explanation": "用于构成疑问句，询问人、事物等信息。「か」是疑问助词。"
+        },
+        {
+          "template": "あの + 名詞",
+          "explanation": "「あの」是指示词，修饰名词，表示离说话者和听话者都远的“那个/那位”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 74,
+      "sentence": "それは 辞書ですか。",
+      "chinese": "那是字典吗？",
+      "grammar_points": [
+        {
+          "template": "Noun ですか",
+          "explanation": "用于构成疑问句，询问“是…吗？”"
+        }
+      ]
+    },
+    {
+      "sentence_id": 75,
+      "sentence": "……はい、そうです。",
+      "chinese": "……对，(那)是字典。",
+      "grammar_points": [
+        {
+          "template": "はい",
+          "explanation": "表示肯定、同意或回应，意为“是”、“是的”。"
+        },
+        {
+          "template": "そうです",
+          "explanation": "表示肯定、同意，意为“是的”、“就是那样”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 76,
+      "sentence": "それは ミラーさんのですか。",
+      "chinese": "那是米勒的吗？",
+      "grammar_points": [
+        {
+          "template": "名詞１は名詞２です",
+          "explanation": "表示“名詞１是名詞２”这一判断或事实。在此句中，名詞１是「それ」，名詞２是「ミラーさんの」的省略形式（ミラーさんのもの）。"
+        },
+        {
+          "template": "名詞 + の",
+          "explanation": "这里的「の」表示所属关系，相当于“的”，常用于省略了后半部分的名词，如「ミラーさんの」即「ミラーさんのもの」。"
+        },
+        {
+          "template": "〜か",
+          "explanation": "句末助词，表示疑问，将陈述句变为疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 77,
+      "sentence": "……いいえ、違います。",
+      "chinese": "……不，不是。",
+      "grammar_points": [
+        {
+          "template": "動詞のます形",
+          "explanation": "动词的礼貌形（现在肯定），表示礼貌的肯定或否定。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 78,
+      "sentence": "それは シャープペンシルですか。",
+      "chinese": "那是自动铅笔吗？",
+      "grammar_points": [
+        {
+          "template": "名詞 + は",
+          "explanation": "助词「は」表示前面的名詞是句子的主题或话题。"
+        },
+        {
+          "template": "名詞 + です",
+          "explanation": "助动词「です」是礼貌的判断助动词，表示“是…”。"
+        },
+        {
+          "template": "文末 + か",
+          "explanation": "助词「か」放在句末表示疑问，构成疑问句。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 79,
+      "sentence": "……いいえ、ボールペンです。",
+      "chinese": "……不，(那)是圆珠笔。",
+      "grammar_points": [
+        {
+          "template": "名詞 + です",
+          "explanation": "用于肯定句句末，表示判断、断定，是礼貌体。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 80,
+      "sentence": "これは「9」ですか、「7」ですか。",
+      "chinese": "这是“9”，还是“7”？",
+      "grammar_points": [
+        {
+          "template": "Aですか、Bですか",
+          "explanation": "用于提出选择性问题，询问是A还是B。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 81,
+      "sentence": "……「9」です。",
+      "chinese": "……是“9”。",
+      "grammar_points": [
+        {
+          "template": "名詞 + です",
+          "explanation": "「です」是日语中最基本的礼貌体判断助动词，用于肯定句，表示“是”、“就是”的意思，使句子变得礼貌。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 82,
+      "sentence": "これは コンピューターの 本です。",
+      "chinese": "这是计算机的书。",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示“N1是N2”的肯定句型。「は」是提示主题的助词，「です」是判断助动词，表示肯定和礼貌。"
+        },
+        {
+          "template": "N1 の N2",
+          "explanation": "助词「の」连接两个名词，表示N1修饰N2，通常表示所属、性质、内容等关系。在这里表示“计算机的书”或“关于计算机的书”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 83,
+      "sentence": "これは わたしの 本です。",
+      "chinese": "这是我的书。",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示“N1是N2”的肯定句，是日语中最基本的陈述句形式，です表示礼貌。"
+        },
+        {
+          "template": "N1 の N2",
+          "explanation": "助词「の」连接两个名词，表示N1修饰N2，常用于表示所属关系（N1的N2）。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 84,
+      "sentence": "あれは だれの かばんですか。",
+      "chinese": "那是谁的提包？",
+      "grammar_points": [
+        {
+          "template": "これ/それ/あれ は",
+          "explanation": "「これ」(kore), 「それ」(sore), 「あれ」(are) 是指示代词，分别表示“这个”、“那个”、“那个（更远的）”。「は」(wa) 是主题助词，标记前面的词语为句子的主题。"
+        },
+        {
+          "template": "だれの Noun",
+          "explanation": "「だれ」(dare) 是疑问代词，意为“谁”。「の」(no) 是表示所属关系的助词，与「だれ」结合构成“谁的 Noun”。"
+        },
+        {
+          "template": "Noun ですか",
+          "explanation": "「です」(desu) 是礼貌的判断助动词（系动词），用于肯定句或疑问句中。 「か」(ka) 是疑问助词，将陈述句变为疑问句，表示提问。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 85,
+      "sentence": "佐藤さんのです。",
+      "chinese": "……是佐藤的。",
+      "grammar_points": [
+        {
+          "template": "名詞 + の + です",
+          "explanation": "表示所属或所有，意为“是…的”。这里的「の」将前面的名词短语名词化，暗示“某物”或“某人所有之物”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 86,
+      "sentence": "この かばんは あなたのですか。",
+      "chinese": "这个提包是你的吗？",
+      "grammar_points": [
+        {
+          "template": "この/その/あの + Noun",
+          "explanation": "指示代词，用于修饰名词，表示“这个/那个/那个（远处的）”。"
+        },
+        {
+          "template": "Noun + は",
+          "explanation": "助词「は」提示句子的主题。"
+        },
+        {
+          "template": "Noun1 の",
+          "explanation": "助词「の」表示所属关系，或将名词化，表示“...的”。"
+        },
+        {
+          "template": "Noun + ですか",
+          "explanation": "疑问句型，表示“是...吗？”。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 87,
+      "sentence": "……いいえ、わたしのじゃ ありません。",
+      "chinese": "……不是，不是我的。",
+      "grammar_points": [
+        {
+          "template": "N の",
+          "explanation": "助词「の」表示所属或修饰。在此句中，「わたしの」表示“我的”，省略了后面的名词，意为“我的东西”或“我的（那个）”。"
+        },
+        {
+          "template": "N/Na-adj じゃ ありません",
+          "explanation": "「じゃ ありません」是「です」的礼貌否定形式，表示“不是……”。「じゃ」是「では」的口语缩略形式。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 88,
+      "sentence": "ミラーさんは IMC の 社員ですか。",
+      "chinese": "米勒是 IMC 公司的职员吗？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 です",
+          "explanation": "表示N1是N2。は是主题标记助词，です是礼貌的判断助动词。"
+        },
+        {
+          "template": "N1 の N2",
+          "explanation": "表示N1修饰N2，N1属于N2，或N2是N1的一部分。在这里表示“IMC的社员”。"
+        },
+        {
+          "template": "文末に「か」",
+          "explanation": "将陈述句变为疑问句，表示提问。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 89,
+      "sentence": "……はい、IMC の 社員です。",
+      "chinese": "……对，(他)是 IMC 公司的职员。",
+      "grammar_points": [
+        {
+          "template": "N1 の N2",
+          "explanation": "表示N2属于N1，或N2是N1的属性。在句子中，IMC の 社員 表示“IMC的员工”。"
+        },
+        {
+          "template": "N です",
+          "explanation": "是日语中最基本的肯定句型，表示“是N”。用于肯定句的句尾，使句子变得礼貌。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 90,
+      "sentence": "× はい、IMC のです。",
+      "chinese": "是的，是IMC公司的。",
+      "grammar_points": [
+        {
+          "template": "名詞 + の + です",
+          "explanation": "「の」在这里用作代词，代替前面提到的或上下文明确的名词，避免重复。常用于表示所属、类别或指代某个事物。例如，如果问“これは誰の傘ですか？”（这是谁的伞？），可以回答“私のです”（是我的）。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 91,
+      "sentence": "この 傘は あなたのですか。",
+      "chinese": "这把伞是你的吗？",
+      "grammar_points": [
+        {
+          "template": "N1 は N2 ですか",
+          "explanation": "用于询问“N1是N2吗？”的疑问句型，其中「は」是提示主题的助词，「です」是礼貌的判断助动词，「か」是疑问助词。"
+        },
+        {
+          "template": "N の",
+          "explanation": "助词「の」表示所属关系，即“N1的N2”。当N2被省略时，表示“N1的东西/N1的那个”。例如「あなたの」表示“你的（东西）”。"
+        },
+        {
+          "template": "この N",
+          "explanation": "指示代词「この」修饰名词，表示“这个N”，用于指代离说话人近的事物。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 92,
+      "sentence": "……いいえ、違います。シュミットさんのです。",
+      "chinese": "……不是，那是施密特的。",
+      "grammar_points": [
+        {
+          "template": "動詞ます形",
+          "explanation": "动词的礼貌形，表示现在或将来的肯定动作。例：違います (chigaimasu - 不是/错了)。"
+        },
+        {
+          "template": "名詞＋の",
+          "explanation": "助词「の」，表示所属、所有，或代替前文提到的名词（如本句中「シュミットさんのです」省略了「もの」）。"
+        },
+        {
+          "template": "〜です",
+          "explanation": "礼貌形判断助动词，表示“是”，用于句末使句子礼貌化。例：シュミットさんのです (是施密特先生的)。"
+        }
+      ]
+    },
+    {
+      "sentence_id": 93,
+      "sentence": "そうですか。",
+      "chinese": "哦，是吗。",
+      "grammar_points": [
+        {
+          "template": "そうです",
+          "explanation": "表示“是这样”、“没错”、“就是那样”。常用于肯定回答或表示理解。"
+        },
+        {
+          "template": "～か",
+          "explanation": "疑问助词，接在句末表示疑问。"
+        }
+      ]
+    }
+  ]
+}

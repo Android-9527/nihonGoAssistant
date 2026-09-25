@@ -12,7 +12,10 @@ datapre/extracted_pages/
 datapre/grammar_annotate/
 datapre/language_data/
 .venv/
-pycache/
+__pycache__/
 .pyc
 .env
 .env.local
+
+# IDE
+.vscode/

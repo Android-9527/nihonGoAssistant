@@ -1,7 +1,6 @@
 <template>
   <div class="detail-container">
     <div class="detail-header">
-      <button @click="goBack" class="back-btn">← 返回</button>
       <h2 v-if="word">
         {{ word.kana }}
         <span v-if="word.kanji !== '/'" class="kanji-badge">{{ word.kanji }}</span>
@@ -85,9 +84,6 @@ export default {
         console.error('Failed to fetch word detail:', error);
       }
     },
-    goBack() {
-      this.$router.push('/words');
-    },
     speakSentence(sentence) {
       const text = sentence?.japanese || '';
       speakJapanese(text, {
@@ -129,20 +125,6 @@ export default {
   color: #1e40af;
   border-radius: 4px;
   font-size: 0.9em;
-}
-
-.back-btn {
-  padding: 8px 16px;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  background: #e5e7eb;
 }
 
 .word-info {

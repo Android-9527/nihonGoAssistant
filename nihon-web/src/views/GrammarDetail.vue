@@ -1,7 +1,6 @@
 <template>
   <div class="detail-container">
     <div class="detail-header">
-      <button @click="goBack" class="back-btn">← 返回</button>
       <h2 v-if="grammar">
         语法 #{{ grammar.id }}
         <span class="template-badge">{{ grammar.template }}</span>
@@ -184,9 +183,6 @@ export default {
       }
       return '';
     },
-    goBack() {
-      this.$router.push('/grammar');
-    },
     closeTokenInfo() {
       this.tokenInfoVisible = false;
       this.selectedToken = null;
@@ -253,20 +249,6 @@ export default {
   font-size: 0.9em;
 }
 
-.back-btn {
-  padding: 8px 16px;
-  background: #f3f4f6;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.back-btn:hover {
-  background: #e5e7eb;
-}
-
 .grammar-info {
   display: grid;
   gap: 20px;
@@ -305,6 +287,7 @@ export default {
 
 .info-row span {
   color: #1f2937;
+  white-space: pre-line;
 }
 
 .sentences-section {
@@ -475,6 +458,7 @@ export default {
   margin: 4px 0;
   color: #334155;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .word-block {

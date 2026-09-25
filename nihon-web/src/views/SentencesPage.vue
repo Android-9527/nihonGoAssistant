@@ -663,6 +663,7 @@ export default {
   margin: 4px 0;
   color: #334155;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 .word-block {
