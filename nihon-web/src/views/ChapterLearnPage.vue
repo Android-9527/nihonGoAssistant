@@ -9,7 +9,7 @@
       <button class="flow-item" @click="goWords">1. 单词</button>
       <button class="flow-item" @click="goGrammar">2. 语法</button>
       <button class="flow-item" @click="goText">3. 课文</button>
-      <button class="flow-item" @click="todo('测试')">4. 测试</button>
+      <button class="flow-item" @click="goTest">4. 测试</button>
     </div>
   </section>
 </template>
@@ -43,8 +43,8 @@ export default {
     goText() {
       this.$router.push(`/sentences?chapter=${this.chapter}`);
     },
-    todo(name) {
-      alert(`${name}模块即将开放。`);
+    goTest() {
+      this.$router.push(`/test?chapter=${this.chapter}`);
     },
   },
   mounted() {

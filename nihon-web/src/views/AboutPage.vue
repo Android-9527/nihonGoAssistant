@@ -8,7 +8,7 @@
     <div class="entry-grid">
       <article class="entry-card" @click="go('/about/project')">
         <h2>设计逻辑</h2>
-        <p>查看 Nihon Assistant 的设计思路、功能结构与实现路径。</p>
+        <p>查看 NihonGo Assistant 的设计思路、功能结构与实现路径。</p>
       </article>
 
       <article class="entry-card" @click="go('/about/author')">

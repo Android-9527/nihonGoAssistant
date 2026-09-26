@@ -19,3 +19,10 @@ __pycache__/
 
 # IDE
 .vscode/
+
+# Local toolchains & build artifacts (do not commit)
+.tools/
+*.apk
+RELEASE_SIGNING_INFO.txt
+nihon-web/android/
+nihon-web/capacitor.config.json

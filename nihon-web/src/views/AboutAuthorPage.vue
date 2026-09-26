@@ -44,10 +44,10 @@
 
     <article class="card">
       <h2>项目经历</h2>
-      <h3>日语智能学习平台（Nihon Assistant）</h3>
+      <h3>日语智能学习平台（NihonGo Assistant）</h3>
       <p class="links">
         在线地址：
-        <a href="http://136.117.65.65/" target="_blank" rel="noreferrer">http://136.117.65.65/</a>
+        <a href="https://nihongolab.win/" target="_blank" rel="noreferrer">https://nihongolab.win/</a>
       </p>
       <p class="links">
         讲解视频：

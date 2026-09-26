@@ -2,12 +2,16 @@ import sqlite3
 import json
 import os
 import re
+import secrets
 import threading
 import time
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
+from functools import wraps
 from pathlib import Path
-from flask import Flask, abort, jsonify, request, send_file
+from flask import Flask, abort, g, jsonify, request, send_file
 from flask_cors import CORS
+from werkzeug.security import check_password_hash, generate_password_hash
 import httpx
 from google import genai
 from google.genai import types
@@ -73,6 +77,73 @@ def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    nickname TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    expires_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS user_answer_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    element_type TEXT NOT NULL,
+    element_id INTEGER NOT NULL,
+    chapter INTEGER,
+    correct INTEGER NOT NULL,
+    duration_ms INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS user_element_mastery (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    element_type TEXT NOT NULL,
+    element_id INTEGER NOT NULL,
+    mastery REAL NOT NULL DEFAULT 50,
+    correct_count INTEGER NOT NULL DEFAULT 0,
+    wrong_count INTEGER NOT NULL DEFAULT 0,
+    total_attempts INTEGER NOT NULL DEFAULT 0,
+    streak INTEGER NOT NULL DEFAULT 0,
+    last_reviewed_at TEXT,
+    next_review_at TEXT,
+    UNIQUE(user_id, element_type, element_id)
+);
+CREATE TABLE IF NOT EXISTS user_review_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    element_type TEXT NOT NULL,
+    element_id INTEGER NOT NULL,
+    source TEXT NOT NULL DEFAULT 'wrong',
+    priority REAL NOT NULL DEFAULT 0,
+    due_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_answer_log_user ON user_answer_log(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_mastery_user ON user_element_mastery(user_id);
+CREATE INDEX IF NOT EXISTS idx_review_queue_user ON user_review_queue(user_id, status);
+"""
+
+
+def ensure_schema() -> None:
+    """Create auth / learning-behavior tables idempotently at startup."""
+    conn = get_db()
+    try:
+        conn.executescript(SCHEMA_SQL)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def table_exists(conn, table_name: str) -> bool:
@@ -804,5 +875,338 @@ def grammar_search():
         return jsonify({"error": str(exc)}), 500
 
 
+# ---------- 认证（邮箱登录注册，游客可浏览公开内容） ----------
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+SESSION_TTL_DAYS = 30
+
+
+def now_str() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def get_current_user() -> dict | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth[len("Bearer "):].strip()
+    if not token:
+        return None
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT u.id, u.email, u.nickname, u.created_at, s.expires_at "
+            "FROM sessions s JOIN users u ON u.id = s.user_id "
+            "WHERE s.token = ? LIMIT 1",
+            (token,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    if row["expires_at"] and row["expires_at"] <= now_str():
+        return None
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "nickname": row["nickname"],
+        "created_at": row["created_at"],
+    }
+
+
+def require_auth(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            return jsonify({"error": "请先登录后再使用该功能"}), 401
+        g.user = user
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def create_session(conn, user_id: int) -> str:
+    token = secrets.token_hex(32)
+    expires = (datetime.now() + timedelta(days=SESSION_TTL_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
+    conn.execute(
+        "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?,?,?,?)",
+        (token, user_id, now_str(), expires),
+    )
+    return token
+
+
+@app.route("/api/auth/register", methods=["POST"])
+def auth_register():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    nickname = str(payload.get("nickname", "")).strip()
+
+    if not EMAIL_RE.match(email):
+        return jsonify({"error": "邮箱格式不正确"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "密码至少 6 位"}), 400
+    if not nickname:
+        nickname = email.split("@")[0]
+
+    conn = get_db()
+    try:
+        if conn.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
+            return jsonify({"error": "该邮箱已注册，请直接登录"}), 409
+        conn.execute(
+            "INSERT INTO users (email, password_hash, nickname, created_at, updated_at) VALUES (?,?,?,?,?)",
+            (email, generate_password_hash(password), nickname, now_str(), now_str()),
+        )
+        user_id = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()["id"]
+        token = create_session(conn, user_id)
+        conn.commit()
+        return jsonify({
+            "token": token,
+            "user": {"id": user_id, "email": email, "nickname": nickname, "created_at": now_str()},
+        }), 201
+    finally:
+        conn.close()
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+    payload = request.get_json(silent=True) or {}
+    email = str(payload.get("email", "")).strip().lower()
+    password = str(payload.get("password", ""))
+
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT id, email, nickname, password_hash, created_at FROM users WHERE email = ?",
+            (email,),
+        ).fetchone()
+        if not row or not check_password_hash(row["password_hash"], password):
+            return jsonify({"error": "邮箱或密码错误"}), 401
+        conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (now_str(),))
+        token = create_session(conn, row["id"])
+        conn.commit()
+        return jsonify({
+            "token": token,
+            "user": {"id": row["id"], "email": row["email"], "nickname": row["nickname"], "created_at": row["created_at"]},
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+@require_auth
+def auth_logout():
+    auth = request.headers.get("Authorization", "")
+    token = auth[len("Bearer "):].strip()
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/auth/me", methods=["GET"])
+@require_auth
+def auth_me():
+    return jsonify({"user": g.user})
+
+
+@app.route("/api/auth/me", methods=["PUT"])
+@require_auth
+def auth_update_me():
+    payload = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        if "nickname" in payload:
+            nickname = str(payload.get("nickname", "")).strip()
+            if not nickname or len(nickname) > 30:
+                return jsonify({"error": "昵称长度需在 1-30 个字符内"}), 400
+            conn.execute(
+                "UPDATE users SET nickname = ?, updated_at = ? WHERE id = ?",
+                (nickname, now_str(), g.user["id"]),
+            )
+            g.user["nickname"] = nickname
+        if payload.get("new_password"):
+            old_password = str(payload.get("old_password", ""))
+            new_password = str(payload.get("new_password", ""))
+            if len(new_password) < 6:
+                return jsonify({"error": "新密码至少 6 位"}), 400
+            row = conn.execute("SELECT password_hash FROM users WHERE id = ?", (g.user["id"],)).fetchone()
+            if not row or not check_password_hash(row["password_hash"], old_password):
+                return jsonify({"error": "原密码错误"}), 400
+            conn.execute(
+                "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+                (generate_password_hash(new_password), now_str(), g.user["id"]),
+            )
+        conn.commit()
+        return jsonify({"user": g.user})
+    finally:
+        conn.close()
+
+
+# ---------- 测试与复习（掌握度闭环） ----------
+
+MASTERY_INIT = 50.0
+MASTERY_GAIN = 10.0
+MASTERY_GAIN_STREAK = 15.0
+MASTERY_PENALTY = 25.0
+MASTERY_LOW = 60.0
+
+
+def review_days_for_mastery(mastery: float) -> int:
+    if mastery < 60:
+        return 1
+    if mastery < 80:
+        return 3
+    return 7
+
+
+@app.route("/api/test/submit", methods=["POST"])
+@require_auth
+def test_submit():
+    payload = request.get_json(silent=True) or {}
+    element_type = str(payload.get("element_type", "")).strip().lower()
+    element_id = payload.get("element_id")
+    correct_raw = payload.get("correct")
+    duration_ms = payload.get("duration_ms", 0)
+    chapter = payload.get("chapter")
+
+    if element_type not in ("word", "grammar"):
+        return jsonify({"error": "element_type 只能是 word 或 grammar"}), 400
+    if not isinstance(element_id, int) or element_id <= 0:
+        return jsonify({"error": "element_id 无效"}), 400
+    if correct_raw not in (True, False, 0, 1):
+        return jsonify({"error": "correct 必须是布尔值"}), 400
+    correct_flag = 1 if correct_raw in (True, 1) else 0
+
+    conn = get_db()
+    try:
+        table = "word" if element_type == "word" else "grammar"
+        if not table_exists(conn, table):
+            return jsonify({"error": f"数据表 {table} 不存在"}), 500
+        if not conn.execute(f"SELECT 1 FROM {table} WHERE id = ?", (element_id,)).fetchone():
+            return jsonify({"error": "元素不存在"}), 404
+
+        now = now_str()
+        conn.execute(
+            "INSERT INTO user_answer_log (user_id, element_type, element_id, chapter, correct, duration_ms, created_at) VALUES (?,?,?,?,?,?,?)",
+            (g.user["id"], element_type, element_id, chapter, correct_flag, duration_ms, now),
+        )
+
+        mrow = conn.execute(
+            "SELECT * FROM user_element_mastery WHERE user_id=? AND element_type=? AND element_id=?",
+            (g.user["id"], element_type, element_id),
+        ).fetchone()
+
+        if mrow:
+            mastery = float(mrow["mastery"])
+            streak = int(mrow["streak"])
+            correct_count = int(mrow["correct_count"])
+            wrong_count = int(mrow["wrong_count"])
+            total = int(mrow["total_attempts"])
+        else:
+            mastery, streak, correct_count, wrong_count, total = MASTERY_INIT, 0, 0, 0, 0
+
+        if correct_flag:
+            new_streak = streak + 1
+            gain = MASTERY_GAIN_STREAK if new_streak >= 3 else MASTERY_GAIN
+            new_mastery = min(100.0, mastery + gain)
+            correct_count += 1
+        else:
+            new_streak = 0
+            new_mastery = max(0.0, mastery - MASTERY_PENALTY)
+            wrong_count += 1
+        total += 1
+
+        if correct_flag:
+            next_review = (datetime.now() + timedelta(days=review_days_for_mastery(new_mastery))).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            next_review = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+
+        if mrow:
+            conn.execute(
+                "UPDATE user_element_mastery SET mastery=?, correct_count=?, wrong_count=?, total_attempts=?, streak=?, last_reviewed_at=?, next_review_at=? WHERE id=?",
+                (new_mastery, correct_count, wrong_count, total, new_streak, now, next_review, mrow["id"]),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO user_element_mastery (user_id, element_type, element_id, mastery, correct_count, wrong_count, total_attempts, streak, last_reviewed_at, next_review_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (g.user["id"], element_type, element_id, new_mastery, correct_count, wrong_count, total, new_streak, now, next_review),
+            )
+
+        # 任何一次作答都会把该元素的活动队列项标记为已完成（复习闭环）；
+        # 若本次为“忘记”，则重新入队，次日优先复习。
+        conn.execute(
+            "UPDATE user_review_queue SET status='done' WHERE user_id=? AND element_type=? AND element_id=? AND status='active'",
+            (g.user["id"], element_type, element_id),
+        )
+        if not correct_flag:
+            conn.execute(
+                "INSERT INTO user_review_queue (user_id, element_type, element_id, source, priority, due_at, status, created_at) VALUES (?,?,?,?,?,?,?,?)",
+                (g.user["id"], element_type, element_id, "wrong", 100.0, next_review, "active", now),
+            )
+
+        conn.commit()
+        return jsonify({
+            "mastery": round(new_mastery, 1),
+            "correct_count": correct_count,
+            "wrong_count": wrong_count,
+            "total_attempts": total,
+            "streak": new_streak,
+            "next_review_at": next_review,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/review/recommendations", methods=["GET"])
+@require_auth
+def review_recommendations():
+    limit = request.args.get("limit", type=int) or 30
+    conn = get_db()
+    try:
+        now = now_str()
+        items = []
+
+        rows = conn.execute(
+            "SELECT element_type, element_id, source FROM user_review_queue "
+            "WHERE user_id=? AND status='active' AND due_at<=? ORDER BY priority DESC",
+            (g.user["id"], now),
+        ).fetchall()
+        for r in rows:
+            items.append({
+                "element_type": r["element_type"],
+                "element_id": r["element_id"],
+                "source": "wrong",
+                "reason": "上次忘记，优先复习",
+            })
+
+        mrows = conn.execute(
+            "SELECT element_type, element_id, mastery, next_review_at FROM user_element_mastery "
+            "WHERE user_id=? AND (mastery<? OR next_review_at<=?)",
+            (g.user["id"], MASTERY_LOW, now),
+        ).fetchall()
+        seen = {(i["element_type"], i["element_id"]) for i in items}
+        for r in mrows:
+            key = (r["element_type"], r["element_id"])
+            if key in seen:
+                continue
+            reason = "掌握度较低" if r["mastery"] < MASTERY_LOW else "到期复习"
+            items.append({
+                "element_type": r["element_type"],
+                "element_id": r["element_id"],
+                "source": "due",
+                "reason": reason,
+                "mastery": round(float(r["mastery"]), 1),
+            })
+            seen.add(key)
+
+        return jsonify(items[:limit])
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
+    ensure_schema()
     app.run(debug=True, port=5000)

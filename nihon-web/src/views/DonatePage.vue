@@ -2,7 +2,7 @@
   <section class="donate-page">
     <header class="hero">
       <h1>捐赠支持</h1>
-      <p>感谢你对 Nihon Assistant 的支持。</p>
+      <p>感谢你对 NihonGo Assistant 的支持。</p>
     </header>
 
     <article class="donate-card">
