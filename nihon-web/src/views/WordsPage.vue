@@ -228,8 +228,10 @@ export default {
 
 .word-content {
   display: flex;
+  flex-wrap: wrap;
   gap: 20px;
   flex: 1;
+  min-width: 0;
 }
 
 .kana, .kanji, .chinese {
@@ -252,6 +254,40 @@ export default {
   flex: 2;
   min-width: 150px;
   color: #666;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .words-container {
+    padding: 12px;
+  }
+
+  .word-item {
+    padding: 12px 14px;
+  }
+
+  .word-number {
+    margin-right: 10px;
+  }
+
+  .speak-btn {
+    margin-right: 8px;
+  }
+
+  .word-content {
+    gap: 8px;
+  }
+
+  .kana, .kanji {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .chinese {
+    flex-basis: 100%;
+    min-width: 0;
+  }
 }
 
 .no-results {

@@ -117,6 +117,7 @@
 
 <script>
 import { authHeaders } from '../store/user';
+import { speakJapanese } from '../utils/speech';
 
 function shuffle(arr) {
   const pool = [...arr];
@@ -275,6 +276,23 @@ export default {
       if (this.wordRevealed) return;
       this.wordRevealed = true;
       this.wordRevealAt = Date.now();
+      this.speakCurrentWord();
+    },
+    speakCurrentWord() {
+      const word = this.currentWord;
+      if (!word) return;
+      const text =
+        word.kana && word.kana !== '/'
+          ? word.kana
+          : word.kanji && word.kanji !== '/'
+            ? word.kanji
+            : '';
+      if (!text) return;
+      speakJapanese(text, {
+        ttsAudioId: word.tts_audio_id,
+        entityType: 'word',
+        entityId: word.id,
+      });
     },
     revealGrammar() {
       if (this.grammarRevealed) return;
