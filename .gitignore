@@ -11,6 +11,8 @@ UI设计.pptx
 datapre/extracted_pages/
 datapre/grammar_annotate/
 datapre/language_data/
+# 运行时数据库（含用户数据，不入库；服务器部署时单独同步内容数据）
+datapre/nihon_assistant_data.db
 .venv/
 __pycache__/
 .pyc
