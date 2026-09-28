@@ -24,6 +24,10 @@
 
 <script>
 const KEY = 'nihon_books';
+const DEFAULT_BOOKS = [
+  { id: 'minna-nihongo-1', title: '大家的日语初级1', progress: 0, chapterStart: 1, chapterEnd: 25 },
+  { id: 'minna-nihongo-2', title: '大家的日语初级2', progress: 0, chapterStart: 26, chapterEnd: 50 },
+];
 
 export default {
   data() {
@@ -35,13 +39,20 @@ export default {
   methods: {
     loadBooks() {
       const saved = localStorage.getItem(KEY);
-      if (saved) {
-        this.books = JSON.parse(saved);
-        return;
+      const savedBooks = saved ? JSON.parse(saved) : [];
+
+      // 合并默认书单：已存在不重复并补齐元数据，缺失则补上；默认书排在前面
+      const merged = [];
+      for (const def of DEFAULT_BOOKS) {
+        const existing = savedBooks.find((b) => b.id === def.id);
+        merged.push(existing ? { ...def, ...existing } : { ...def });
       }
-      this.books = [
-        { id: 'minna-nihongo-1', title: '大家的日语初级1', progress: 0 },
-      ];
+      for (const book of savedBooks) {
+        if (!merged.some((m) => m.id === book.id)) {
+          merged.push(book);
+        }
+      }
+      this.books = merged;
       this.saveBooks();
     },
     saveBooks() {

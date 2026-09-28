@@ -252,4 +252,14 @@ def update_sentence_segments(chapter: int | None = None):
 
 
 if __name__ == "__main__":
-	update_sentence_segments(TARGET_CHAPTER)
+	import sys
+
+	if len(sys.argv) >= 3:
+		start, end = int(sys.argv[1]), int(sys.argv[2])
+		for chapter in range(start, end + 1):
+			print(f"--- 后清洗第 {chapter} 章 ---")
+			update_sentence_segments(chapter)
+	elif len(sys.argv) == 2:
+		update_sentence_segments(int(sys.argv[1]))
+	else:
+		update_sentence_segments(TARGET_CHAPTER)

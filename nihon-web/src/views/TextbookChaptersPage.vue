@@ -6,7 +6,7 @@
     </header>
 
     <div class="chapters-grid">
-      <button v-for="n in 25" :key="n" class="chapter-btn" @click="openChapter(n)">
+      <button v-for="n in chapters" :key="n" class="chapter-btn" @click="openChapter(n)">
         第 {{ n }} 章
       </button>
     </div>
@@ -19,6 +19,23 @@ const KEY = 'nihon_books';
 export default {
   data() {
     return { bookTitle: '课本' };
+  },
+  computed: {
+    chapters() {
+      let start = 1;
+      let end = 25;
+      const saved = localStorage.getItem(KEY);
+      if (saved) {
+        const found = JSON.parse(saved).find((b) => b.id === this.$route.params.bookId);
+        if (found && found.chapterStart && found.chapterEnd) {
+          start = found.chapterStart;
+          end = found.chapterEnd;
+        }
+      }
+      const list = [];
+      for (let n = start; n <= end; n += 1) list.push(n);
+      return list;
+    },
   },
   methods: {
     openChapter(chapter) {

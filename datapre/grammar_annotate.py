@@ -198,6 +198,8 @@ def build_prompt_batch(chapter: int, sentences: list[dict], grammars: list[dict]
 		"2) 只返回实际命中的语法。\n"
 		"3) grammar_id 必须来自给定 grammar_list_json。\n"
 		"4) 不确定时宁可不标。\n"
+		"5) 只标注语法的核心固定成分（助词、接续形式、活用形等语法功能词），不要标注名词、代词等可变化成分。例如语法模板中写作“名词”“动词”“形容词”等可替换位置的部分，句子中对应的具体名词/动词/形容词实词一律不标。\n"
+		"6) 语法模板中的固定语法词（如“たら”“ても”“もし”“が”“は”“に”“を”“で”等助词、接续、活用词尾）才是标注对象。\n"
 	)
 
 
@@ -336,9 +338,15 @@ def annotate_chapter_with_llm(chapter: int = TARGET_CHAPTER, batch_size: int = 1
 
 
 if __name__ == "__main__":
-	print(f"开始标注第{TARGET_CHAPTER}章...")
-	annotate_chapter_with_llm(TARGET_CHAPTER)
-	print(f"🎉 第{TARGET_CHAPTER}章处理完成！")
+	import sys
+
+	if len(sys.argv) >= 2:
+		chapter = int(sys.argv[1])
+	else:
+		chapter = TARGET_CHAPTER
+	print(f"开始标注第{chapter}章...")
+	annotate_chapter_with_llm(chapter)
+	print(f"🎉 第{chapter}章处理完成！")
 
 
 

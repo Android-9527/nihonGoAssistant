@@ -295,12 +295,12 @@ def insert_grammar(conn: sqlite3.Connection, grammar_data: List[Dict], chapter: 
     conn.commit()
 
 
-def import_all_chapters():
-    """导入所有章节数据"""
+def import_all_chapters(start: int = 1, end: int = 25):
+    """导入指定范围的章节数据（默认 1~25）。"""
     init_database()
     conn = sqlite3.connect(DB_PATH)
     
-    for chapter_num in range(1, 26):
+    for chapter_num in range(start, end + 1):
         print(f"\n正在导入第 {chapter_num} 章...")
         data = load_json_chapter(chapter_num)
         
@@ -348,4 +348,11 @@ def import_all_chapters():
 
 
 if __name__ == "__main__":
-    import_all_chapters()
+    import sys
+
+    if len(sys.argv) >= 3:
+        import_all_chapters(int(sys.argv[1]), int(sys.argv[2]))
+    elif len(sys.argv) == 2:
+        import_all_chapters(int(sys.argv[1]), int(sys.argv[1]))
+    else:
+        import_all_chapters()

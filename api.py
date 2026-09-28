@@ -459,7 +459,7 @@ def score_text_pair(left_text: str, right_text: str) -> float:
     return SequenceMatcher(None, left, right).ratio()
 
 
-def load_grammar_index(chapters=range(1, 26)) -> list[dict]:
+def load_grammar_index(chapters=range(1, 51)) -> list[dict]:
     conn = get_db()
     try:
         grammar_table = pick_table(conn, "grammar")

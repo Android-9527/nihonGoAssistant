@@ -4,20 +4,28 @@ from concurrent.futures import ProcessPoolExecutor
 import os
 from pathlib import Path
 
-import fitz
+import pymupdf
 
 
-i_values = [27, 39, 51, 65, 77, 89, 101, 115, 127, 139, 151, 163, 179, 191, 203, 215, 229, 241, 253, 265, 277, 289, 303, 315, 327]
+i_values = [23, 35, 47, 59, 71, 85, 97, 109, 121, 133, 149, 161, 173, 185, 197, 211, 223, 235, 247, 259, 273, 285, 297, 309, 321]
 parts = ["sentences", "dialogue", "word_1", "word_2", "grammar_1", "grammar_2", "essay"]
 offsets = [0, 1, 2, 3, 4, 5, 11]
 
-pdf_path = Path(r"C:\Users\22106\Downloads\oursnihongo.pdf")
+# 初始章节号：前 1~24 章的图片已提取，本批从该章节开始编号
+START_CHAPTER = 26
+# 结束章节号（含）：超过该章节的条目不生成
+END_CHAPTER = 50
+
+# pdf_path = Path(r"C:\Users\22106\Downloads\oursnihongo.pdf")
+pdf_path = Path(r"C:\Users\22106\Downloads\大家的日语初级2（第二版）.pdf")
+
 out_dir = Path(__file__).resolve().parent / "extracted_pages"
 out_dir.mkdir(exist_ok=True)
 
 tasks = [
 	(chapter, part, i + d)
-	for chapter, i in enumerate(i_values, 1)
+	for chapter, i in enumerate(i_values, START_CHAPTER)
+	if chapter <= END_CHAPTER
 	for part, d in zip(parts, offsets)
 ]
 
