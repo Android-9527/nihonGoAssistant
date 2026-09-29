@@ -26,6 +26,7 @@ export default {
         this.words = await response.json();
         this.displayWords = [...this.words];
         this.originalWords = [...this.words];
+        this.isShuffled = false;
       } catch (error) {
         console.error('Failed to fetch words:', error);
       }
@@ -67,6 +68,11 @@ export default {
   mounted() {
     this.fetchWords();
   },
+  watch: {
+    '$route.query.chapter'() {
+      this.fetchWords();
+    },
+  },
 };
 </script>
 
@@ -92,12 +98,11 @@ export default {
 
     <div class="words-list">
       <div 
-        v-for="(word, idx) in displayWords" 
+        v-for="word in displayWords" 
         :key="word.id"
         @click="goToWordDetail(word.id)"
         class="word-item"
       >
-        <span class="word-number">{{ idx + 1 }}</span>
         <button
           class="speak-btn"
           type="button"
@@ -196,20 +201,6 @@ export default {
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
-.word-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: #e5e7eb;
-  border-radius: 50%;
-  margin-right: 16px;
-  font-weight: 600;
-  color: #6b7280;
-  flex-shrink: 0;
-}
-
 .speak-btn {
   width: 32px;
   height: 32px;
@@ -265,10 +256,6 @@ export default {
 
   .word-item {
     padding: 12px 14px;
-  }
-
-  .word-number {
-    margin-right: 10px;
   }
 
   .speak-btn {

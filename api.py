@@ -459,6 +459,40 @@ def score_text_pair(left_text: str, right_text: str) -> float:
     return SequenceMatcher(None, left, right).ratio()
 
 
+# 《大家的日语》原书单词表带音调核标注（アクセント核），如「飛ぶ10」「pamphlet14」
+# 「体育館43」「目が覚める1-2」，显示时去除，保留干净词形。
+# 数字块前不能是数字（保护多位数字词「10」）或「の」（保护分数词「4分の1」）。
+WORD_TONE_RE = re.compile(r"(?<![0-9の])(?<=\S)[0-9]+(?:-[0-9]+)*$")
+
+
+def clean_word_display(kanji: str | None, chinese: str | None) -> tuple[str, str]:
+    kanji = (kanji or "").strip()
+    chinese = (chinese or "").strip()
+
+    # kanji 整条为纯数字且释义不含数字 → 音调标注（如 すると→'10'），
+    # 而非数字词本身（きゅう→'9'、とお→'10、10个'）
+    if re.fullmatch(r"[0-9]+", kanji) and not re.search(r"[0-9]", chinese):
+        kanji = "/"
+    else:
+        kanji = WORD_TONE_RE.sub("", kanji)
+
+    # 去掉词形（kanji）首尾的波浪标记：原书用「～弁」「～てもらう」「国際～」等
+    # 表示接头/接尾词占位；中文释义里的 ～/~ 是语法占位符（如「～和～」「~左右」），保留。
+    # U+FF5E 全角波浪、U+301C 波形 dash、U+007E 半角波浪均覆盖。
+    kanji = kanji.strip("\uff5e\u301c\u007e")
+    if not kanji:
+        kanji = "/"
+    return kanji, chinese
+
+
+def clean_word_tokens(tokens: list[dict]) -> list[dict]:
+    for token in tokens:
+        token["kanji"], token["chinese"] = clean_word_display(
+            token.get("kanji"), token.get("chinese")
+        )
+    return tokens
+
+
 def load_grammar_index(chapters=range(1, 51)) -> list[dict]:
     conn = get_db()
     try:
@@ -623,6 +657,8 @@ def get_words():
     else:
         cur = conn.execute(f"SELECT id, kana, kanji, chinese, {tts_expr} AS tts_audio_id FROM {word_table} ORDER BY id")
     words = [dict(row) for row in cur.fetchall()]
+    for word in words:
+        word["kanji"], word["chinese"] = clean_word_display(word.get("kanji"), word.get("chinese"))
     conn.close()
     return jsonify(words)
 
@@ -655,10 +691,12 @@ def get_word_sentences(word_id):
     for sentence in sentences:
         cur = conn.execute(token_select_sql(conn, word_table), (sentence["id"],))
         mapped_tokens = [dict(row) for row in cur.fetchall()]
-        sentence["tokens"] = build_sentence_tokens(
-            sentence.get("japanese_segmented"),
-            sentence.get("japanese"),
-            mapped_tokens,
+        sentence["tokens"] = clean_word_tokens(
+            build_sentence_tokens(
+                sentence.get("japanese_segmented"),
+                sentence.get("japanese"),
+                mapped_tokens,
+            )
         )
     
     conn.close()
@@ -694,10 +732,12 @@ def get_sentences():
     for sentence in sentences:
         cur = conn.execute(token_select_sql(conn, word_table), (sentence["id"],))
         mapped_tokens = [dict(row) for row in cur.fetchall()]
-        sentence["tokens"] = build_sentence_tokens(
-            sentence.get("japanese_segmented"),
-            sentence.get("japanese"),
-            mapped_tokens,
+        sentence["tokens"] = clean_word_tokens(
+            build_sentence_tokens(
+                sentence.get("japanese_segmented"),
+                sentence.get("japanese"),
+                mapped_tokens,
+            )
         )
 
         if has_sentence_grammar:
@@ -779,10 +819,12 @@ def get_grammar():
         for example in examples:
             cur = conn.execute(token_select_sql(conn, word_table), (example["id"],))
             mapped_tokens = [dict(row) for row in cur.fetchall()]
-            example["tokens"] = build_sentence_tokens(
-                example.get("japanese_segmented"),
-                example.get("japanese"),
-                mapped_tokens,
+            example["tokens"] = clean_word_tokens(
+                build_sentence_tokens(
+                    example.get("japanese_segmented"),
+                    example.get("japanese"),
+                    mapped_tokens,
+                )
             )
         
         point["examples"] = examples

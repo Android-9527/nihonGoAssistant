@@ -21,7 +21,7 @@ TARGET_CHAPTER = 19
 
 
 def clean_kana_text(text: str) -> str:
-	"""清洗 kana：去掉括号内容并去除常见符号。"""
+	"""清洗 kana（读音）：去掉括号内容并去除常见符号。"""
 	cleaned = (text or "").strip()
 	# 去掉半角/全角括号及其内部内容
 	cleaned = re.sub(r"\([^)]*\)", "", cleaned)
@@ -32,6 +32,28 @@ def clean_kana_text(text: str) -> str:
 	cleaned = re.sub(r"[~〜～\-一－—・･/\\.,?!！？。、「」『』【】〈〉《》…]+", "", cleaned)
 	cleaned = re.sub(r"\s+", "", cleaned)
 	return cleaned
+
+
+def clean_kanji_text(text: str) -> str:
+	"""清洗 kanji（词形）：只去括号和纯符号，保留汉字与数字（不同于 kana 清洗，不删「一」等汉字）。"""
+	cleaned = (text or "").strip()
+	cleaned = re.sub(r"\([^)]*\)", "", cleaned)
+	cleaned = re.sub(r"（[^）]*）", "", cleaned)
+	cleaned = cleaned.replace("[", "").replace("]", "")
+	cleaned = re.sub(r"[~〜～\-ー・･/\\.,?!！？。、「」『』【】〈〉《》…]+", "", cleaned)
+	cleaned = re.sub(r"\s+", "", cleaned)
+	return cleaned
+
+
+def surface_forms(text: str):
+	"""返回分词 surface 可用的匹配形式：原文 + kana 清洗 + kanji 清洗。"""
+	raw = (text or "").strip()
+	forms = [raw] if raw else []
+	for cleaner in (clean_kana_text, clean_kanji_text):
+		cleaned = cleaner(raw)
+		if cleaned and cleaned not in forms:
+			forms.append(cleaned)
+	return forms
 
 
 def clean_word_kana(conn: sqlite3.Connection):
@@ -64,7 +86,7 @@ def normalized_forms(text: str):
 
 
 def build_word_lookup(conn: sqlite3.Connection):
-	"""构建单词查找表：优先同章匹配，其次全库匹配。"""
+	"""构建单词查找表：kana 与 kanji 都参与索引，优先同章匹配，其次全库匹配。"""
 	cursor = conn.cursor()
 	cursor.execute("SELECT id, chapter, kana, kanji FROM word ORDER BY id")
 	rows = cursor.fetchall()
@@ -74,8 +96,13 @@ def build_word_lookup(conn: sqlite3.Connection):
 
 	for word_id, chapter, kana, kanji in rows:
 		chapter_map = by_chapter.setdefault(chapter, {})
-		for text in (kana, kanji):
-			for form in normalized_forms(text):
+		for text, cleaner in ((kana, clean_kana_text), (kanji, clean_kanji_text)):
+			raw = (text or "").strip()
+			forms = [raw] if raw else []
+			cleaned = cleaner(raw)
+			if cleaned and cleaned not in forms:
+				forms.append(cleaned)
+			for form in forms:
 				if form and form not in chapter_map:
 					chapter_map[form] = word_id
 				if form and form not in global_map:
@@ -85,12 +112,12 @@ def build_word_lookup(conn: sqlite3.Connection):
 
 
 def find_word_id(token: str, chapter: int, by_chapter, global_map):
-	"""按同章优先规则查找 token 对应的 word_id。"""
+	"""按同章优先规则查找 token 对应的 word_id（kana/kanji 均参与）。"""
 	chapter_map = by_chapter.get(chapter, {})
-	for form in normalized_forms(token):
+	for form in surface_forms(token):
 		if form in chapter_map:
 			return chapter_map[form]
-	for form in normalized_forms(token):
+	for form in surface_forms(token):
 		if form in global_map:
 			return global_map[form]
 	return None
@@ -98,7 +125,7 @@ def find_word_id(token: str, chapter: int, by_chapter, global_map):
 
 def contains_form(text: str, form_map) -> bool:
 	"""判断文本的任一标准形是否在词表映射中。"""
-	for form in normalized_forms(text):
+	for form in surface_forms(text):
 		if form in form_map:
 			return True
 	return False
@@ -158,6 +185,13 @@ def rebuild_sentence_word_relations(conn: sqlite3.Connection, chapter: int | Non
 
 	inserted_count = 0
 	for sentence_id, chapter, jp_sentence_seg in sentence_rows:
+		# 保留既有语法标注（token_index -> grammar_id），重建词汇关系时回填。
+		cursor.execute(
+			"SELECT token_index, grammar_id FROM sentence_word_grammar WHERE sentence_id = ?",
+			(sentence_id,),
+		)
+		old_grammar = {idx: g for idx, g in cursor.fetchall()}
+
 		# 仅重建词汇关系，避免残留旧 token。
 		cursor.execute(
 			"DELETE FROM sentence_word_grammar WHERE sentence_id = ?",
@@ -171,12 +205,13 @@ def rebuild_sentence_word_relations(conn: sqlite3.Connection, chapter: int | Non
 		tokens = [t for t in seg.split("/") if t]
 		for token_index, token_surface in enumerate(tokens):
 			word_id = find_word_id(token_surface, chapter, by_chapter, global_map)
+			grammar_id = old_grammar.get(token_index)
 			cursor.execute(
 				"""
 				INSERT INTO sentence_word_grammar (sentence_id, word_id, grammar_id, surface, token_index)
-				VALUES (?, ?, NULL, ?, ?)
+				VALUES (?, ?, ?, ?, ?)
 				""",
-				(sentence_id, word_id, token_surface, token_index),
+				(sentence_id, word_id, grammar_id, token_surface, token_index),
 			)
 			inserted_count += 1
 
