@@ -1,0 +1,30 @@
+*   Trying 136.117.65.65:443...
+* Connected to 136.117.65.65 (136.117.65.65) port 443
+* schannel: disabled automatic use of client certificate
+* schannel: using IP address, SNI is not supported by OS.
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* using HTTP/1.x
+> GET / HTTP/1.1
+> Host: 136.117.65.65
+> User-Agent: curl/8.5.0
+> Accept: */*
+> 
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+< HTTP/1.1 200 OK
+< Server: nginx/1.22.1
+< Date: Thu, 01 Oct 2026 17:18:15 GMT
+< Content-Type: text/html
+< Content-Length: 1841
+< Last-Modified: Tue, 29 Sep 2026 16:33:36 GMT
+< Connection: keep-alive
+< ETag: "6abbe860-731"
+< Accept-Ranges: bytes
+< 
+{ [1841 bytes data]
+* Connection #0 to host 136.117.65.65 left intact

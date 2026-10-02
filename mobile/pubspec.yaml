@@ -1,0 +1,89 @@
+name: nihon_go
+description: "日语学习助手 - nihonGO"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  # 本地数据库：课本数据打包进 App，离线访问
+  sqflite: ^2.4.0
+  path: ^1.9.0
+  # 网络：登录 / 测试 / 复习接口
+  http: ^1.2.0
+  # 状态管理
+  provider: ^6.1.0
+  # 登录 token 安全存储
+  flutter_secure_storage: ^9.2.0
+  # 本地 MP3 播放（打包的 TTS 音频）
+  audioplayers: ^6.1.0
+  # 系统语音合成兜底：无本地音频时用手机 TTS 朗读
+  flutter_tts: ^4.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/data/
+    - assets/audio/sentence/chapter_1/
+    - assets/audio/sentence/chapter_10/
+    - assets/audio/sentence/chapter_11/
+    - assets/audio/sentence/chapter_12/
+    - assets/audio/sentence/chapter_13/
+    - assets/audio/sentence/chapter_14/
+    - assets/audio/sentence/chapter_15/
+    - assets/audio/sentence/chapter_16/
+    - assets/audio/sentence/chapter_17/
+    - assets/audio/sentence/chapter_18/
+    - assets/audio/sentence/chapter_19/
+    - assets/audio/sentence/chapter_2/
+    - assets/audio/sentence/chapter_20/
+    - assets/audio/sentence/chapter_21/
+    - assets/audio/sentence/chapter_22/
+    - assets/audio/sentence/chapter_23/
+    - assets/audio/sentence/chapter_24/
+    - assets/audio/sentence/chapter_25/
+    - assets/audio/sentence/chapter_3/
+    - assets/audio/sentence/chapter_4/
+    - assets/audio/sentence/chapter_5/
+    - assets/audio/sentence/chapter_6/
+    - assets/audio/sentence/chapter_7/
+    - assets/audio/sentence/chapter_8/
+    - assets/audio/sentence/chapter_9/
+    - assets/audio/word/chapter_1/
+    - assets/audio/word/chapter_10/
+    - assets/audio/word/chapter_11/
+    - assets/audio/word/chapter_12/
+    - assets/audio/word/chapter_13/
+    - assets/audio/word/chapter_14/
+    - assets/audio/word/chapter_15/
+    - assets/audio/word/chapter_16/
+    - assets/audio/word/chapter_17/
+    - assets/audio/word/chapter_18/
+    - assets/audio/word/chapter_19/
+    - assets/audio/word/chapter_2/
+    - assets/audio/word/chapter_20/
+    - assets/audio/word/chapter_21/
+    - assets/audio/word/chapter_22/
+    - assets/audio/word/chapter_23/
+    - assets/audio/word/chapter_24/
+    - assets/audio/word/chapter_25/
+    - assets/audio/word/chapter_3/
+    - assets/audio/word/chapter_4/
+    - assets/audio/word/chapter_5/
+    - assets/audio/word/chapter_6/
+    - assets/audio/word/chapter_7/
+    - assets/audio/word/chapter_8/
+    - assets/audio/word/chapter_9/
