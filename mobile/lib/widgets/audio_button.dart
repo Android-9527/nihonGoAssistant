@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/audio_service.dart';
+import '../services/ui_text.dart';
 
 /// 朗读按钮：优先播打包的本地 TTS 音频，
 /// 无本地音频时用系统语音合成朗读 fallbackText
@@ -39,9 +40,10 @@ class _AudioButtonState extends State<AudioButton> {
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('暂无离线音频，且手机未安装日语语音'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text(UiText.t('暂无离线音频，且手机未安装日语语音',
+              'No offline audio and Japanese voice is not installed')),
+          duration: const Duration(seconds: 2),
         ),
       );
       return;
@@ -63,7 +65,7 @@ class _AudioButtonState extends State<AudioButton> {
         _playing ? Icons.volume_up : Icons.volume_up_outlined,
         color: _playing ? Theme.of(context).colorScheme.primary : null,
       ),
-      tooltip: '朗读',
+      tooltip: UiText.t('朗读', 'Play'),
     );
   }
 }

@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 
 import '../data/db_helper.dart';
 import '../models/grammar.dart';
-import '../models/user.dart';
 import '../models/word.dart';
 import '../services/api_client.dart';
+import '../services/audio_service.dart';
+import '../services/language_setting.dart';
+import '../services/ui_text.dart';
 import '../widgets/audio_button.dart';
 
 /// 测试：按章节随机出题（单词 / 语法），答完同步到服务器
@@ -33,8 +36,7 @@ class _TestPageState extends State<TestPage> {
   List<Grammar> _grammar = [];
   int _index = 0;
   bool _revealed = false;
-  bool _submitting = false;
-  List<SubmitResult> _results = [];
+  int _answered = 0;
   int _correct = 0;
 
   @override
@@ -51,14 +53,14 @@ class _TestPageState extends State<TestPage> {
 
   Future<void> _start() async {
     if (_chapter == null) {
-      _toast('请先选择章节');
+      _toast(UiText.t('请先选择章节', 'Select a chapter first'));
       return;
     }
     final rand = Random();
     if (_type == 'word') {
       final all = await DbHelper.getWords(chapter: _chapter);
       if (all.isEmpty) {
-        _toast('本章暂无单词题目');
+        _toast(UiText.t('本章暂无单词题目', 'No word questions in this chapter'));
         return;
       }
       all.shuffle(rand);
@@ -66,7 +68,7 @@ class _TestPageState extends State<TestPage> {
     } else {
       final all = await DbHelper.getGrammar(chapter: _chapter);
       if (all.isEmpty) {
-        _toast('本章暂无语法题目');
+        _toast(UiText.t('本章暂无语法题目', 'No grammar questions in this chapter'));
         return;
       }
       all.shuffle(rand);
@@ -76,37 +78,52 @@ class _TestPageState extends State<TestPage> {
       _started = true;
       _index = 0;
       _revealed = false;
-      _results = [];
+      _answered = 0;
       _correct = 0;
     });
+    _playCurrent();
   }
 
   bool get _finished => _started && _index >= (_type == 'word' ? _words.length : _grammar.length);
 
-  Future<void> _answer(bool correct) async {
+  /// 自动播放当前题目的读音（仅单词测试；语法测试不自动朗读）
+  Future<void> _playCurrent() async {
+    if (_type != 'word') return;
+    final id = _words[_index].id;
+    final fallback = _words[_index].kana;
+    await AudioService.instance.playEntityAudio('word', id, fallbackText: fallback);
+  }
+
+  /// 点击反馈：本地立即切换下一条并自动播放，服务器同步在后台进行
+  void _answer(bool correct) {
+    if (correct) _correct++;
+    _answered++;
+    final isWord = _type == 'word';
+    final id = isWord ? _words[_index].id : _grammar[_index].id;
+    // 后台同步（不阻塞 UI）
+    unawaited(_submitResult(isWord, id, correct));
+    if (!mounted) return;
     setState(() {
-      _submitting = true;
-      _revealed = true;
+      _index++;
+      _revealed = false;
     });
+    // 未结束时自动播放下一条
+    if (!_finished) _playCurrent();
+  }
+
+  Future<void> _submitResult(bool isWord, int id, bool correct) async {
     try {
-      final id = _type == 'word' ? _words[_index].id : _grammar[_index].id;
-      final r = await ApiClient.instance.submitTest(
-        elementType: _type,
+      await ApiClient.instance.submitTest(
+        elementType: isWord ? 'word' : 'grammar',
         elementId: id,
         correct: correct,
         chapter: _chapter,
       );
-      if (correct) _correct++;
-      _results.add(r);
     } catch (e) {
-      _toast('同步失败：$e（本次作答未记录）');
+      if (mounted) {
+      _toast(UiText.t('答案已记录，同步服务器失败：', 'Answer recorded, but sync failed: ') + '$e');
     }
-    if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      _index++;
-      _revealed = false;
-    });
+    }
   }
 
   void _toast(String msg) {
@@ -117,7 +134,7 @@ class _TestPageState extends State<TestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('测试')),
+      appBar: AppBar(title: Text(UiText.t('测试', 'Test'))),
       body: !_started ? _buildSetup() : _finished ? _buildResult() : _buildQuiz(),
     );
   }
@@ -126,39 +143,43 @@ class _TestPageState extends State<TestPage> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text('测试类型', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(UiText.t('测试类型', 'Test Type'), style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         SegmentedButton<String>(
-          segments: const [
-            ButtonSegment(value: 'word', label: Text('单词')),
-            ButtonSegment(value: 'grammar', label: Text('语法')),
+          segments: [
+            ButtonSegment(value: 'word', label: Text(UiText.t('单词', 'Words'))),
+            ButtonSegment(value: 'grammar', label: Text(UiText.t('语法', 'Grammar'))),
           ],
           selected: {_type},
           onSelectionChanged: (s) => setState(() => _type = s.first),
         ),
         const SizedBox(height: 20),
-        const Text('章节', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(UiText.t('章节', 'Chapter'), style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           initialValue: _chapter,
           decoration: const InputDecoration(border: OutlineInputBorder()),
-          hint: const Text('选择章节'),
-          items: _chapters.map((c) => DropdownMenuItem(value: c, child: Text('第 $c 课'))).toList(),
+          hint: Text(UiText.t('选择章节', 'Select chapter')),
+          items: _chapters
+              .map((c) => DropdownMenuItem(value: c, child: Text(UiText.t('第 $c 课', 'Lesson $c'))))
+              .toList(),
           onChanged: (v) => setState(() => _chapter = v),
         ),
         const SizedBox(height: 20),
-        const Text('题量', style: TextStyle(fontWeight: FontWeight.bold)),
+        Text(UiText.t('题量', 'Questions'), style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
           initialValue: _count,
           decoration: const InputDecoration(border: OutlineInputBorder()),
-          items: const [5, 10, 20].map((n) => DropdownMenuItem(value: n, child: Text('$n 题'))).toList(),
+          items: [5, 10, 20]
+              .map((n) => DropdownMenuItem(value: n, child: Text(UiText.t('$n 题', '$n questions'))))
+              .toList(),
           onChanged: (v) => setState(() => _count = v ?? 10),
         ),
         const SizedBox(height: 28),
         FilledButton(
           onPressed: _start,
-          child: const Text('开始测试'),
+          child: Text(UiText.t('开始测试', 'Start Test')),
         ),
       ],
     );
@@ -166,10 +187,11 @@ class _TestPageState extends State<TestPage> {
 
   Widget _buildQuiz() {
     final isWord = _type == 'word';
-    final title = isWord ? _words[_index].display : _grammar[_index].template;
+    // 单词题默认显示假名（不显示汉字），语法题显示模板
+    final title = isWord ? _words[_index].kana : _grammar[_index].template;
     final answer = isWord
-        ? '${_words[_index].kana}  ${_words[_index].chinese}'
-        : _grammar[_index].explanation;
+        ? '${_words[_index].kana}  ${LanguageSetting.t(_words[_index].chinese, _words[_index].english)}'
+        : LanguageSetting.t(_grammar[_index].explanation, _grammar[_index].explanationEn);
     final id = isWord ? _words[_index].id : _grammar[_index].id;
     final entityType = _type;
     return Padding(
@@ -179,7 +201,8 @@ class _TestPageState extends State<TestPage> {
         children: [
           LinearProgressIndicator(value: (_index + 1) / (_type == 'word' ? _words.length : _grammar.length)),
           const SizedBox(height: 16),
-          Text('第 ${_index + 1} 题', style: TextStyle(color: Colors.grey.shade600)),
+          Text(UiText.t('第 ${_index + 1} 题', 'Question ${_index + 1}'),
+              style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 12),
           Card(
             child: Padding(
@@ -215,7 +238,7 @@ class _TestPageState extends State<TestPage> {
                   else
                     TextButton(
                       onPressed: () => setState(() => _revealed = true),
-                      child: const Text('显示答案'),
+                      child: Text(UiText.t('显示答案', 'Show Answer')),
                     ),
                 ],
               ),
@@ -225,7 +248,7 @@ class _TestPageState extends State<TestPage> {
           if (!_revealed)
             FilledButton(
               onPressed: () => setState(() => _revealed = true),
-              child: const Text('显示答案'),
+              child: Text(UiText.t('显示答案', 'Show Answer')),
             )
           else ...[
             Row(
@@ -233,18 +256,18 @@ class _TestPageState extends State<TestPage> {
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: Colors.red.shade400),
-                    onPressed: _submitting ? null : () => _answer(false),
+                    onPressed: () => _answer(false),
                     icon: const Icon(Icons.close),
-                    label: const Text('答错了'),
+                    label: Text(UiText.t('答错了', 'Wrong')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(backgroundColor: Colors.green.shade600),
-                    onPressed: _submitting ? null : () => _answer(true),
+                    onPressed: () => _answer(true),
                     icon: const Icon(Icons.check),
-                    label: const Text('答对了'),
+                    label: Text(UiText.t('答对了', 'Correct')),
                   ),
                 ),
               ],
@@ -256,7 +279,7 @@ class _TestPageState extends State<TestPage> {
   }
 
   Widget _buildResult() {
-    final total = _results.length;
+    final total = _answered;
     final acc = total == 0 ? 0 : (_correct / total * 100).round();
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -265,14 +288,16 @@ class _TestPageState extends State<TestPage> {
         children: [
           const Icon(Icons.emoji_events, size: 64, color: Colors.amber),
           const SizedBox(height: 12),
-          Text('测试完成', style: Theme.of(context).textTheme.headlineSmall),
+          Text(UiText.t('测试完成', 'Test Complete'),
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          Text('答对 $_correct / $total  正确率 $acc%',
+          Text(UiText.t('答对 $_correct / $total  正确率 $acc%',
+              'Correct $_correct / $total  Accuracy $acc%'),
               style: const TextStyle(fontSize: 18)),
           const SizedBox(height: 20),
           FilledButton(
             onPressed: () => setState(() => _started = false),
-            child: const Text('再来一组'),
+            child: Text(UiText.t('再来一组', 'Try Again')),
           ),
         ],
       ),

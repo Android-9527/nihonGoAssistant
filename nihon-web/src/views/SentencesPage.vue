@@ -1,5 +1,6 @@
 <script>
 import { speakJapanese } from '../utils/speech'
+import languageStore from '../store/language'
 
 export default {
   data() {
@@ -8,8 +9,6 @@ export default {
       tokenInfoVisible: false,
       selectedToken: null,
       selectedGrammar: null,
-      grammarInfoCache: {},
-      loadingTokenGrammar: false,
     };
   },
   computed: {
@@ -44,12 +43,20 @@ export default {
         group.viewType = viewType;
         group.title = (first.group_title || '').trim() ||
           (viewType === 'dialogue' ? `对话 ${group.id}` : viewType === 'essay' ? `短文 ${group.id}` : '例句');
+        group.titleEn = (first.group_title_en || '').trim() ||
+          (viewType === 'dialogue' ? `Dialogue ${group.id}` : viewType === 'essay' ? `Passage ${group.id}` : 'Example');
       });
 
       return groups;
     },
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
+    pickText(zh, en) {
+      return languageStore.pickText(zh, en);
+    },
     async fetchSentences() {
       try {
         const chapter = this.$route.query.chapter;
@@ -62,7 +69,7 @@ export default {
         console.error('Failed to fetch sentences:', error);
       }
     },
-    async handleTokenClick(token) {
+    handleTokenClick(token) {
       const hasWord = !!token.word_id;
       const hasGrammar = token.grammar_id != null;
 
@@ -70,23 +77,9 @@ export default {
         return;
       }
 
-      if (hasWord && !hasGrammar) {
-        this.$router.push(`/word/${token.word_id}`);
-        return;
-      }
-
-      if (!hasWord && hasGrammar) {
-        this.$router.push(`/grammar/${token.grammar_id}`);
-        return;
-      }
-
       this.selectedToken = token;
       this.tokenInfoVisible = true;
       this.selectedGrammar = null;
-
-      if (hasGrammar) {
-        await this.loadGrammarInfo(token.grammar_id);
-      }
     },
     tokenClasses(token) {
       return {
@@ -95,14 +88,15 @@ export default {
       };
     },
     tokenTitle(token) {
+      const meaning = this.isEn() ? (token.english || token.chinese) : token.chinese;
       if (token.word_id && token.grammar_id != null) {
-        return `${token.kana} / ${token.chinese} | 语法 #${token.grammar_id}`;
+        return `${token.kana} / ${meaning} | ${token.grammar_word || `语法 #${token.grammar_id}`}`;
       }
       if (token.word_id) {
-        return `${token.kana} / ${token.chinese}`;
+        return `${token.kana} / ${meaning}`;
       }
       if (token.grammar_id != null) {
-        return `语法 #${token.grammar_id}`;
+        return token.grammar_word || `语法 #${token.grammar_id}`;
       }
       return '';
     },
@@ -114,34 +108,10 @@ export default {
         entityId: sentence?.id,
       });
     },
-    async loadGrammarInfo(grammarId) {
-      if (this.grammarInfoCache[grammarId]) {
-        this.selectedGrammar = this.grammarInfoCache[grammarId];
-        return;
-      }
-
-      this.loadingTokenGrammar = true;
-      try {
-        const response = await fetch('/api/grammar');
-        const allGrammar = await response.json();
-        const nextCache = { ...this.grammarInfoCache };
-        allGrammar.forEach((item) => {
-          nextCache[item.id] = item;
-        });
-        this.grammarInfoCache = nextCache;
-        this.selectedGrammar = this.grammarInfoCache[grammarId] || null;
-      } catch (error) {
-        console.error('Failed to load grammar info:', error);
-        this.selectedGrammar = null;
-      } finally {
-        this.loadingTokenGrammar = false;
-      }
-    },
     closeTokenInfo() {
       this.tokenInfoVisible = false;
       this.selectedToken = null;
       this.selectedGrammar = null;
-      this.loadingTokenGrammar = false;
     },
     goToWordDetail() {
       if (!this.selectedToken?.word_id) return;
@@ -163,7 +133,7 @@ export default {
 <template>
   <div class="sentences-container">
     <div class="sentences-header">
-      <h2>例句学习</h2>
+      <h2>{{ isEn() ? 'Sentence Study' : '例句学习' }}</h2>
     </div>
 
     <div class="sentences-list">
@@ -172,7 +142,7 @@ export default {
         :key="`group-${group.id}`"
         class="sentence-group"
       >
-        <div class="group-title">{{ group.title }}</div>
+        <div class="group-title">{{ isEn() ? group.titleEn : group.title }}</div>
 
         <div v-if="group.viewType === 'single'" class="group-sentences">
           <div
@@ -205,7 +175,7 @@ export default {
                   {{ token.surface }}
                 </span>
               </div>
-              <div class="chinese">{{ sentence.chinese }}</div>
+              <div class="chinese">{{ pickText(sentence.chinese, sentence.english) }}</div>
             </div>
           </div>
         </div>
@@ -240,7 +210,7 @@ export default {
                 {{ token.surface }}
               </span>
             </div>
-            <div class="chinese">{{ sentence.chinese }}</div>
+            <div class="chinese">{{ pickText(sentence.chinese, sentence.english) }}</div>
           </article>
         </div>
 
@@ -277,43 +247,40 @@ export default {
           </div>
 
           <div class="essay-cn">
-            <p v-for="sentence in group.sentences" :key="`cn-${sentence.id}`">{{ sentence.chinese }}</p>
+            <p v-for="sentence in group.sentences" :key="`cn-${sentence.id}`">{{ pickText(sentence.chinese, sentence.english) }}</p>
           </div>
         </article>
       </div>
     </div>
 
     <p v-if="groupedSentenceBlocks.length === 0" class="no-results">
-      暂无例句
+      {{ isEn() ? 'No sentences yet' : '暂无例句' }}
     </p>
 
     <div v-if="tokenInfoVisible" class="token-modal-mask" @click.self="closeTokenInfo">
       <div class="token-modal">
         <div class="token-modal-head">
-          <h3>分词信息</h3>
-          <button class="close-btn" type="button" @click="closeTokenInfo">关闭</button>
+          <h3>{{ isEn() ? 'Token Info' : '分词信息' }}</h3>
+          <button class="close-btn" type="button" @click="closeTokenInfo">{{ isEn() ? 'Close' : '关闭' }}</button>
         </div>
 
-        <p class="token-surface">分词：{{ selectedToken?.surface || '-' }}</p>
+        <p class="token-surface">{{ isEn() ? 'Token: ' : '分词：' }}{{ selectedToken?.surface || '-' }}</p>
 
         <div v-if="selectedToken?.word_id" class="token-block word-block">
-          <h4>单词信息</h4>
+          <h4>{{ isEn() ? 'Word Info' : '单词信息' }}</h4>
           <p><strong>ID：</strong>{{ selectedToken.word_id }}</p>
-          <p><strong>假名：</strong>{{ selectedToken.kana || '-' }}</p>
-          <p><strong>汉字：</strong>{{ selectedToken.kanji || '-' }}</p>
-          <p><strong>中文：</strong>{{ selectedToken.chinese || '-' }}</p>
-          <button class="jump-btn" type="button" @click="goToWordDetail">进入单词详情</button>
+          <p><strong>{{ isEn() ? 'Kana: ' : '假名：' }}</strong>{{ selectedToken.kana || '-' }}</p>
+          <p><strong>{{ isEn() ? 'Kanji: ' : '汉字：' }}</strong>{{ selectedToken.kanji || '-' }}</p>
+          <p><strong>{{ isEn() ? 'Meaning: ' : '中文：' }}</strong>{{ pickText(selectedToken.chinese, selectedToken.english) }}</p>
+          <button class="jump-btn" type="button" @click="goToWordDetail">{{ isEn() ? 'Word detail' : '进入单词详情' }}</button>
         </div>
 
         <div v-if="selectedToken?.grammar_id != null" class="token-block grammar-block">
-          <h4>语法信息</h4>
+          <h4>{{ isEn() ? 'Grammar Info' : '语法信息' }}</h4>
           <p><strong>ID：</strong>{{ selectedToken.grammar_id }}</p>
-          <p v-if="loadingTokenGrammar">语法详情加载中...</p>
-          <template v-else>
-            <p><strong>模板：</strong>{{ selectedGrammar?.template || '-' }}</p>
-            <p><strong>解释：</strong>{{ selectedGrammar?.explanation || '-' }}</p>
-          </template>
-          <button class="jump-btn" type="button" @click="goToGrammarDetail">进入语法详情</button>
+          <p><strong>{{ isEn() ? 'Keyword: ' : '语法单词：' }}</strong>{{ selectedToken.grammar_word || '-' }}</p>
+          <p><strong>{{ isEn() ? 'Explanation: ' : '解释：' }}</strong>{{ pickText(selectedToken.grammar_explain, selectedToken.grammar_explain_en) }}</p>
+          <button class="jump-btn" type="button" @click="goToGrammarDetail">{{ isEn() ? 'Grammar detail' : '进入语法详情' }}</button>
         </div>
       </div>
     </div>

@@ -2,12 +2,14 @@
 class Book {
   final String id;
   final String title;
+  final String titleEn;
   final int chapterStart;
   final int chapterEnd;
 
   const Book({
     required this.id,
     required this.title,
+    required this.titleEn,
     required this.chapterStart,
     required this.chapterEnd,
   });
@@ -16,6 +18,6 @@ class Book {
 }
 
 const defaultBooks = [
-  Book(id: 'minna-nihongo-1', title: '大家的日语初级1', chapterStart: 1, chapterEnd: 25),
-  Book(id: 'minna-nihongo-2', title: '大家的日语初级2', chapterStart: 26, chapterEnd: 50),
+  Book(id: 'minna-nihongo-1', title: '大家的日语初级1', titleEn: 'Minna no Nihongo I', chapterStart: 1, chapterEnd: 25),
+  Book(id: 'minna-nihongo-2', title: '大家的日语初级2', titleEn: 'Minna no Nihongo II', chapterStart: 26, chapterEnd: 50),
 ];

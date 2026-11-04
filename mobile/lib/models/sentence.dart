@@ -7,6 +7,10 @@ class SentenceToken {
   final String kana;
   final String kanji;
   final String chinese;
+  final String english;
+  final String grammarWord;
+  final String grammarExplain;
+  final String grammarExplainEn;
 
   const SentenceToken({
     required this.tokenIndex,
@@ -16,6 +20,10 @@ class SentenceToken {
     this.kana = '',
     this.kanji = '',
     this.chinese = '',
+    this.english = '',
+    this.grammarWord = '',
+    this.grammarExplain = '',
+    this.grammarExplainEn = '',
   });
 
   bool get hasWord => wordId != null;
@@ -29,6 +37,10 @@ class SentenceToken {
         kana: (m['kana'] as String?) ?? '',
         kanji: (m['kanji'] as String?) ?? '',
         chinese: (m['chinese'] as String?) ?? '',
+        english: (m['english'] as String?) ?? '',
+        grammarWord: (m['grammar_word'] as String?) ?? '',
+        grammarExplain: (m['grammar_explain'] as String?) ?? '',
+        grammarExplainEn: (m['grammar_explain_en'] as String?) ?? '',
       );
 }
 
@@ -40,6 +52,7 @@ class Sentence {
   final String jpSentence;
   final String jpSentenceSeg;
   final String chinese;
+  final String english;
   final int? seqNo;
   final String? speaker;
   final List<SentenceToken> tokens;
@@ -51,6 +64,7 @@ class Sentence {
     required this.jpSentence,
     this.jpSentenceSeg = '',
     required this.chinese,
+    this.english = '',
     this.seqNo,
     this.speaker,
     this.tokens = const [],
@@ -63,6 +77,7 @@ class Sentence {
         jpSentence: (m['jp_sentence'] as String?) ?? '',
         jpSentenceSeg: (m['jp_sentence_seg'] as String?) ?? '',
         chinese: (m['chinese'] as String?) ?? '',
+        english: (m['english'] as String?) ?? '',
         seqNo: m['seq_no'] as int?,
         speaker: m['speaker'] as String?,
       );
@@ -74,6 +89,7 @@ class Sentence {
         jpSentence: jpSentence,
         jpSentenceSeg: jpSentenceSeg,
         chinese: chinese,
+        english: english,
         seqNo: seqNo,
         speaker: speaker,
         tokens: tokens ?? this.tokens,

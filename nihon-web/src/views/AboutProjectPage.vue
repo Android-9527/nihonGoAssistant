@@ -48,7 +48,7 @@
       <ul class="list">
         <li><strong>内容数据：</strong>word、grammar、sentence、sentence_group、sentence_word_grammar、grammar_group_sentence。</li>
         <li><strong>音频数据：</strong>tts_audio（word/sentence 音频路径、时长、生成时间）。</li>
-        <li><strong>学习行为：</strong>user_answer_log、user_element_mastery、user_review_queue。</li>
+        <li><strong>学习行为：</strong>user_element_mastery、user_review_queue。</li>
       </ul>
       <h3>4.2 内容接口（只读）</h3>
       <ul class="list mono">

@@ -19,6 +19,10 @@ import AboutChangelogPage from '../views/AboutChangelogPage.vue'
 import LoginPage from '../views/LoginPage.vue'
 import MePage from '../views/MePage.vue'
 import TestPage from '../views/TestPage.vue'
+import WordbookPage from '../views/WordbookPage.vue'
+import WordbookSelectPage from '../views/WordbookSelectPage.vue'
+import WordbookReviewPage from '../views/WordbookReviewPage.vue'
+import PrivacyPage from '../views/PrivacyPage.vue'
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -43,6 +47,11 @@ const router = createRouter({
     { path: '/login', name: 'login', component: LoginPage },
     { path: '/me', name: 'me', component: MePage, meta: { requiresAuth: true } },
     { path: '/test', name: 'test', component: TestPage, meta: { requiresAuth: true } },
+    { path: '/wordbook', name: 'wordbook', component: WordbookPage, meta: { requiresAuth: true } },
+    { path: '/wordbook/select', name: 'wordbook-select', component: WordbookSelectPage, meta: { requiresAuth: true } },
+    { path: '/wordbook/review', name: 'wordbook-review', component: WordbookReviewPage, meta: { requiresAuth: true } },
+    // 隐私政策：公开页面，无需登录（Google Play 要求可直接访问）
+    { path: '/privacy', name: 'privacy', component: PrivacyPage },
   ],
 })
 

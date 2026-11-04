@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../data/db_helper.dart';
 import '../models/book.dart';
+import '../services/language_setting.dart';
+import '../services/ui_text.dart';
 import 'grammar_detail_page.dart';
 
 /// 语法库：按 课本 → 章节 两级选择展开
@@ -26,7 +28,7 @@ class _GrammarPageState extends State<GrammarPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('语法库')),
+      appBar: AppBar(title: Text(UiText.t('语法库', 'Grammar Bank'))),
       body: Column(
         children: [
           // 课本选择
@@ -38,9 +40,14 @@ class _GrammarPageState extends State<GrammarPage> {
                   ButtonSegment(
                     value: i,
                     label: Text(
-                      defaultBooks[i].title.length > 6
-                          ? defaultBooks[i].title.substring(0, 6)
-                          : defaultBooks[i].title,
+                      UiText.t(
+                        defaultBooks[i].title.length > 6
+                            ? defaultBooks[i].title.substring(0, 6)
+                            : defaultBooks[i].title,
+                        defaultBooks[i].titleEn.length > 12
+                            ? defaultBooks[i].titleEn.substring(0, 12)
+                            : defaultBooks[i].titleEn,
+                      ),
                     ),
                   ),
               ],
@@ -63,7 +70,7 @@ class _GrammarPageState extends State<GrammarPage> {
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: FilterChip(
-                      label: Text('第$ch章'),
+                      label: Text(UiText.t('第$ch章', 'Ch.$ch')),
                       selected: _chapter == ch,
                       onSelected: (_) => setState(() => _chapter = ch),
                     ),
@@ -75,10 +82,10 @@ class _GrammarPageState extends State<GrammarPage> {
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
             child: TextField(
-              decoration: const InputDecoration(
-                hintText: '搜索本章句型或解释',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: UiText.t('搜索本章句型或解释', 'Search patterns or explanations'),
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
                 isDense: true,
               ),
               onChanged: (v) => setState(() => _keyword = v),
@@ -93,21 +100,24 @@ class _GrammarPageState extends State<GrammarPage> {
   Widget _buildList() {
     final chapter = _chapter;
     if (chapter == null) {
-      return const Center(child: Text('请选择章节'));
+      return Center(child: Text(UiText.t('请选择章节', 'Select a chapter')));
     }
     return FutureBuilder(
       future: DbHelper.getGrammar(chapter: chapter),
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('加载失败：${snap.error}'));
+        if (snap.hasError) return Center(child: Text(UiText.t('加载失败：', 'Load failed: ') + '${snap.error}'));
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         var list = snap.data!;
         final kw = _keyword.trim();
         if (kw.isNotEmpty) {
           list = list
-              .where((g) => g.template.contains(kw) || g.explanation.contains(kw))
+              .where((g) =>
+                  g.template.contains(kw) ||
+                  g.explanation.contains(kw) ||
+                  g.explanationEn.contains(kw))
               .toList();
         }
-        if (list.isEmpty) return const Center(child: Text('本章暂无语法'));
+        if (list.isEmpty) return Center(child: Text(UiText.t('本章暂无语法', 'No grammar in this chapter')));
         return ListView.separated(
           itemCount: list.length,
           separatorBuilder: (_, _) => const Divider(height: 1, indent: 16),
@@ -120,7 +130,7 @@ class _GrammarPageState extends State<GrammarPage> {
               ),
               title: Text(g.template, style: const TextStyle(fontSize: 16)),
               subtitle: Text(
-                g.explanation,
+                LanguageSetting.t(g.explanation, g.explanationEn),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade700),

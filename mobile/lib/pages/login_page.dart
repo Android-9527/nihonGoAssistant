@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/ui_text.dart';
 
 /// 登录 / 注册页（邮箱 + 密码，昵称可选）
 class LoginPage extends StatefulWidget {
@@ -59,7 +60,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_isRegister ? '注册账号' : '登录')),
+      appBar: AppBar(title: Text(_isRegister ? UiText.t('注册账号', 'Register') : UiText.t('登录', 'Sign In'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -70,16 +71,22 @@ class _LoginPageState extends State<LoginPage> {
               if (_isRegister)
                 TextFormField(
                   controller: _nickname,
-                  decoration: const InputDecoration(labelText: '昵称（可选）', prefixIcon: Icon(Icons.person_outline)),
+                  decoration: InputDecoration(
+                      labelText: UiText.t('昵称（可选）', 'Nickname (optional)'),
+                      prefixIcon: const Icon(Icons.person_outline)),
                 ),
               if (_isRegister) const SizedBox(height: 14),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: '邮箱', prefixIcon: Icon(Icons.mail_outline)),
+                decoration: InputDecoration(
+                    labelText: UiText.t('邮箱', 'Email'),
+                    prefixIcon: const Icon(Icons.mail_outline)),
                 validator: (v) {
                   final s = (v ?? '').trim();
-                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s)) return '邮箱格式不正确';
+                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s)) {
+                    return UiText.t('邮箱格式不正确', 'Invalid email format');
+                  }
                   return null;
                 },
               ),
@@ -87,8 +94,12 @@ class _LoginPageState extends State<LoginPage> {
               TextFormField(
                 controller: _password,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: '密码（至少 6 位）', prefixIcon: Icon(Icons.lock_outline)),
-                validator: (v) => (v ?? '').length < 6 ? '密码至少 6 位' : null,
+                decoration: InputDecoration(
+                    labelText: UiText.t('密码（至少 6 位）', 'Password (min 6 characters)'),
+                    prefixIcon: const Icon(Icons.lock_outline)),
+                validator: (v) => (v ?? '').length < 6
+                    ? UiText.t('密码至少 6 位', 'Password must be at least 6 characters')
+                    : null,
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
@@ -99,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: _submitting ? null : _submit,
                 child: _submitting
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(_isRegister ? '注册并登录' : '登录'),
+                    : Text(_isRegister ? UiText.t('注册并登录', 'Register & Sign In') : UiText.t('登录', 'Sign In')),
               ),
               const SizedBox(height: 10),
               TextButton(
@@ -107,7 +118,9 @@ class _LoginPageState extends State<LoginPage> {
                   _isRegister = !_isRegister;
                   _error = null;
                 }),
-                child: Text(_isRegister ? '已有账号？去登录' : '没有账号？去注册'),
+                child: Text(_isRegister
+                    ? UiText.t('已有账号？去登录', 'Have an account? Sign in')
+                    : UiText.t('没有账号？去注册', 'No account? Register')),
               ),
             ],
           ),

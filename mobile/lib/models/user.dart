@@ -27,31 +27,6 @@ class User {
       };
 }
 
-/// 复习推荐项（/api/review/recommendations 返回）
-class ReviewItem {
-  final String elementType; // word | grammar
-  final int elementId;
-  final String source;
-  final String? reason;
-  final double? mastery;
-
-  const ReviewItem({
-    required this.elementType,
-    required this.elementId,
-    this.source = '',
-    this.reason,
-    this.mastery,
-  });
-
-  factory ReviewItem.fromJson(Map<String, dynamic> j) => ReviewItem(
-        elementType: (j['element_type'] as String?) ?? '',
-        elementId: (j['element_id'] as num?)?.toInt() ?? 0,
-        source: (j['source'] as String?) ?? '',
-        reason: j['reason'] as String?,
-        mastery: (j['mastery'] as num?)?.toDouble(),
-      );
-}
-
 /// 测试/复习提交结果（/api/test/submit 返回）
 class SubmitResult {
   final double mastery;

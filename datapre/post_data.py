@@ -86,7 +86,8 @@ def normalized_forms(text: str):
 
 
 def build_word_lookup(conn: sqlite3.Connection):
-	"""构建单词查找表：kana 与 kanji 都参与索引，优先同章匹配，其次全库匹配。"""
+	"""构建单词查找表：kana 与 kanji 都参与索引，优先同章匹配，其次全库匹配。
+	再叠加 word_conjugation 词干映射表（无覆盖动词词干 -> word_id，全局匹配）。"""
 	cursor = conn.cursor()
 	cursor.execute("SELECT id, chapter, kana, kanji FROM word ORDER BY id")
 	rows = cursor.fetchall()
@@ -107,6 +108,14 @@ def build_word_lookup(conn: sqlite3.Connection):
 					chapter_map[form] = word_id
 				if form and form not in global_map:
 					global_map[form] = word_id
+
+	# 词干映射表：surface 原样加入全局查找（word 表词条优先于映射，映射不覆盖词表）
+	for word_id, surface in cursor.execute(
+		"SELECT word_id, surface FROM word_conjugation WHERE surface IS NOT NULL AND surface != ''"
+	).fetchall():
+		surface = surface.strip()
+		if surface and surface not in global_map:
+			global_map[surface] = word_id
 
 	return by_chapter, global_map
 

@@ -21,6 +21,8 @@ dependencies:
   provider: ^6.1.0
   # 登录 token 安全存储
   flutter_secure_storage: ^9.2.0
+  # 释义语言等轻量偏好
+  shared_preferences: ^2.3.0
   # 本地 MP3 播放（打包的 TTS 音频）
   audioplayers: ^6.1.0
   # 系统语音合成兜底：无本地音频时用手机 TTS 朗读
@@ -87,3 +89,53 @@ flutter:
     - assets/audio/word/chapter_7/
     - assets/audio/word/chapter_8/
     - assets/audio/word/chapter_9/
+    - assets/audio/sentence/chapter_26/
+    - assets/audio/sentence/chapter_27/
+    - assets/audio/sentence/chapter_28/
+    - assets/audio/sentence/chapter_29/
+    - assets/audio/sentence/chapter_30/
+    - assets/audio/sentence/chapter_31/
+    - assets/audio/sentence/chapter_32/
+    - assets/audio/sentence/chapter_33/
+    - assets/audio/sentence/chapter_34/
+    - assets/audio/sentence/chapter_35/
+    - assets/audio/sentence/chapter_36/
+    - assets/audio/sentence/chapter_37/
+    - assets/audio/sentence/chapter_38/
+    - assets/audio/sentence/chapter_39/
+    - assets/audio/sentence/chapter_40/
+    - assets/audio/sentence/chapter_41/
+    - assets/audio/sentence/chapter_42/
+    - assets/audio/sentence/chapter_43/
+    - assets/audio/sentence/chapter_44/
+    - assets/audio/sentence/chapter_45/
+    - assets/audio/sentence/chapter_46/
+    - assets/audio/sentence/chapter_47/
+    - assets/audio/sentence/chapter_48/
+    - assets/audio/sentence/chapter_49/
+    - assets/audio/sentence/chapter_50/
+    - assets/audio/word/chapter_26/
+    - assets/audio/word/chapter_27/
+    - assets/audio/word/chapter_28/
+    - assets/audio/word/chapter_29/
+    - assets/audio/word/chapter_30/
+    - assets/audio/word/chapter_31/
+    - assets/audio/word/chapter_32/
+    - assets/audio/word/chapter_33/
+    - assets/audio/word/chapter_34/
+    - assets/audio/word/chapter_35/
+    - assets/audio/word/chapter_36/
+    - assets/audio/word/chapter_37/
+    - assets/audio/word/chapter_38/
+    - assets/audio/word/chapter_39/
+    - assets/audio/word/chapter_40/
+    - assets/audio/word/chapter_41/
+    - assets/audio/word/chapter_42/
+    - assets/audio/word/chapter_43/
+    - assets/audio/word/chapter_44/
+    - assets/audio/word/chapter_45/
+    - assets/audio/word/chapter_46/
+    - assets/audio/word/chapter_47/
+    - assets/audio/word/chapter_48/
+    - assets/audio/word/chapter_49/
+    - assets/audio/word/chapter_50/

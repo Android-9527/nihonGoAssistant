@@ -1,19 +1,19 @@
 <template>
   <section class="page-wrap">
     <header class="head">
-      <h1>我的课本</h1>
-      <p>当前在学课本与熟练度。</p>
+      <h1>{{ isEn() ? 'My Textbooks' : '我的课本' }}</h1>
+      <p>{{ isEn() ? 'Textbooks you are studying and their progress.' : '当前在学课本与熟练度。' }}</p>
     </header>
 
     <form class="add-book" @submit.prevent="addBook">
-      <input v-model="newTitle" type="text" placeholder="输入书名，例如：大家的日语初级1" required />
-      <button type="submit">添加书籍</button>
+      <input v-model="newTitle" type="text" :placeholder="isEn() ? 'Enter a title, e.g. Minna no Nihongo I' : '输入书名，例如：大家的日语初级1'" required />
+      <button type="submit">{{ isEn() ? 'Add book' : '添加书籍' }}</button>
     </form>
 
     <div class="books-grid">
       <article v-for="book in books" :key="book.id" class="book-card" @click="openBook(book.id)">
         <h2>{{ book.title }}</h2>
-        <p class="sub">熟练度：{{ book.progress }}%</p>
+        <p class="sub">{{ isEn() ? `Progress: ${book.progress}%` : `熟练度：${book.progress}%` }}</p>
         <div class="bar">
           <div class="bar-fill" :style="{ width: `${book.progress}%` }"></div>
         </div>
@@ -23,6 +23,8 @@
 </template>
 
 <script>
+import languageStore from '../store/language';
+
 const KEY = 'nihon_books';
 const DEFAULT_BOOKS = [
   { id: 'minna-nihongo-1', title: '大家的日语初级1', progress: 0, chapterStart: 1, chapterEnd: 25 },
@@ -37,6 +39,9 @@ export default {
     };
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
     loadBooks() {
       const saved = localStorage.getItem(KEY);
       const savedBooks = saved ? JSON.parse(saved) : [];

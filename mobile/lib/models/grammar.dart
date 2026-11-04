@@ -1,4 +1,5 @@
 import 'sentence.dart';
+import '../services/ui_text.dart';
 
 /// 语法模型（grammar 表 + 例句）
 class Grammar {
@@ -6,6 +7,8 @@ class Grammar {
   final int chapter;
   final String template;
   final String explanation;
+  final String templateEn;
+  final String explanationEn;
   final List<Sentence> examples;
 
   const Grammar({
@@ -13,6 +16,8 @@ class Grammar {
     required this.chapter,
     required this.template,
     required this.explanation,
+    this.templateEn = '',
+    this.explanationEn = '',
     this.examples = const [],
   });
 
@@ -21,6 +26,8 @@ class Grammar {
         chapter: m['chapter'] as int,
         template: (m['template'] as String?) ?? '',
         explanation: (m['explanation'] as String?) ?? '',
+        templateEn: (m['template_en'] as String?) ?? '',
+        explanationEn: (m['explanation_en'] as String?) ?? '',
       );
 
   Grammar copyWith({List<Sentence>? examples}) => Grammar(
@@ -28,6 +35,8 @@ class Grammar {
         chapter: chapter,
         template: template,
         explanation: explanation,
+        templateEn: templateEn,
+        explanationEn: explanationEn,
         examples: examples ?? this.examples,
       );
 }
@@ -58,15 +67,15 @@ class SentenceGroup {
   String get typeLabel {
     switch (type) {
       case 'dialogue':
-        return '对话';
+        return UiText.t('对话', 'Dialogue');
       case 'essay':
-        return '短文';
+        return UiText.t('短文', 'Passage');
       case 'grammar_example':
-        return '语法例句';
+        return UiText.t('语法例句', 'Grammar Examples');
       case 'mul_sentences':
-        return '多句';
+        return UiText.t('多句', 'Multiple Sentences');
       default:
-        return '句子';
+        return UiText.t('句子', 'Sentences');
     }
   }
 }

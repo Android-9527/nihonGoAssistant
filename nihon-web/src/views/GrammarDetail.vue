@@ -2,36 +2,36 @@
   <div class="detail-container">
     <div class="detail-header">
       <h2 v-if="grammar">
-        语法 #{{ grammar.id }}
-        <span class="template-badge">{{ grammar.template }}</span>
+        {{ isEn() ? `Grammar #${grammar.id}` : `语法 #${grammar.id}` }}
+        <span class="template-badge">{{ pickText(grammar.template, grammar.template_en) }}</span>
       </h2>
-      <h2 v-else>语法详情</h2>
+      <h2 v-else>{{ isEn() ? 'Grammar Detail' : '语法详情' }}</h2>
     </div>
 
     <div v-if="grammar" class="grammar-info">
       <div class="info-card">
-        <h3>语法信息</h3>
+        <h3>{{ isEn() ? 'Grammar Info' : '语法信息' }}</h3>
         <div class="info-row">
           <label>ID</label>
           <span>{{ grammar.id }}</span>
         </div>
         <div class="info-row">
-          <label>章节</label>
+          <label>{{ isEn() ? 'Chapter' : '章节' }}</label>
           <span>{{ grammar.chapter }}</span>
         </div>
         <div class="info-row">
-          <label>模板</label>
-          <span>{{ grammar.template }}</span>
+          <label>{{ isEn() ? 'Pattern' : '模板' }}</label>
+          <span>{{ pickText(grammar.template, grammar.template_en) }}</span>
         </div>
         <div class="info-row">
-          <label>解释</label>
-          <span>{{ grammar.explanation }}</span>
+          <label>{{ isEn() ? 'Explanation' : '解释' }}</label>
+          <span>{{ pickText(grammar.explanation, grammar.explanation_en) }}</span>
         </div>
       </div>
     </div>
 
     <div class="sentences-section">
-      <h3>语法例句（共 {{ examples.length }} 句）</h3>
+      <h3>{{ isEn() ? `Example sentences (${examples.length})` : `语法例句（共 ${examples.length} 句）` }}</h3>
       <div v-if="examples.length > 0" class="sentences-list">
         <div
           v-for="example in examples"
@@ -61,36 +61,36 @@
               {{ token.surface }}
             </span>
           </div>
-          <div class="sentence-chinese">{{ example.chinese }}</div>
+          <div class="sentence-chinese">{{ pickText(example.chinese, example.english) }}</div>
         </div>
       </div>
-      <p v-else class="no-results">无该语法的例句</p>
+      <p v-else class="no-results">{{ isEn() ? 'No examples for this grammar' : '无该语法的例句' }}</p>
     </div>
 
     <div v-if="tokenInfoVisible" class="token-modal-mask" @click.self="closeTokenInfo">
       <div class="token-modal">
         <div class="token-modal-head">
-          <h3>分词信息</h3>
-          <button class="close-btn" type="button" @click="closeTokenInfo">关闭</button>
+          <h3>{{ isEn() ? 'Token Info' : '分词信息' }}</h3>
+          <button class="close-btn" type="button" @click="closeTokenInfo">{{ isEn() ? 'Close' : '关闭' }}</button>
         </div>
 
-        <p class="token-surface">分词：{{ selectedToken?.surface || '-' }}</p>
+        <p class="token-surface">{{ isEn() ? 'Token: ' : '分词：' }}{{ selectedToken?.surface || '-' }}</p>
 
         <div v-if="selectedToken?.word_id" class="token-block word-block">
-          <h4>单词信息</h4>
+          <h4>{{ isEn() ? 'Word Info' : '单词信息' }}</h4>
           <p><strong>ID：</strong>{{ selectedToken.word_id }}</p>
-          <p><strong>假名：</strong>{{ selectedToken.kana || '-' }}</p>
-          <p><strong>汉字：</strong>{{ selectedToken.kanji || '-' }}</p>
-          <p><strong>中文：</strong>{{ selectedToken.chinese || '-' }}</p>
-          <button class="jump-btn" type="button" @click="goToWordDetail">进入单词详情</button>
+          <p><strong>{{ isEn() ? 'Kana: ' : '假名：' }}</strong>{{ selectedToken.kana || '-' }}</p>
+          <p><strong>{{ isEn() ? 'Kanji: ' : '汉字：' }}</strong>{{ selectedToken.kanji || '-' }}</p>
+          <p><strong>{{ isEn() ? 'Meaning: ' : '中文：' }}</strong>{{ pickText(selectedToken.chinese, selectedToken.english) }}</p>
+          <button class="jump-btn" type="button" @click="goToWordDetail">{{ isEn() ? 'Word detail' : '进入单词详情' }}</button>
         </div>
 
         <div v-if="selectedToken?.grammar_id != null" class="token-block grammar-block">
-          <h4>语法信息</h4>
+          <h4>{{ isEn() ? 'Grammar Info' : '语法信息' }}</h4>
           <p><strong>ID：</strong>{{ selectedToken.grammar_id }}</p>
-          <p><strong>模板：</strong>{{ selectedGrammar?.template || '-' }}</p>
-          <p><strong>解释：</strong>{{ selectedGrammar?.explanation || '-' }}</p>
-          <button class="jump-btn" type="button" @click="goToGrammarDetail">进入语法详情</button>
+          <p><strong>{{ isEn() ? 'Keyword: ' : '语法单词：' }}</strong>{{ selectedToken.grammar_word || '-' }}</p>
+          <p><strong>{{ isEn() ? 'Explanation: ' : '解释：' }}</strong>{{ pickText(selectedToken.grammar_explain, selectedToken.grammar_explain_en) }}</p>
+          <button class="jump-btn" type="button" @click="goToGrammarDetail">{{ isEn() ? 'Grammar detail' : '进入语法详情' }}</button>
         </div>
       </div>
     </div>
@@ -99,6 +99,7 @@
 
 <script>
 import { speakJapanese } from '../utils/speech'
+import languageStore from '../store/language'
 
 export default {
   data() {
@@ -112,6 +113,12 @@ export default {
     };
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
+    pickText(zh, en) {
+      return languageStore.pickText(zh, en);
+    },
     async fetchGrammarDetail() {
       const grammarId = Number(this.$route.params.id);
       const chapter = Number(this.$route.query.chapter);
@@ -149,16 +156,6 @@ export default {
         return;
       }
 
-      if (hasWord && !hasGrammar) {
-        this.$router.push(`/word/${token.word_id}`);
-        return;
-      }
-
-      if (!hasWord && hasGrammar) {
-        this.$router.push(`/grammar/${token.grammar_id}`);
-        return;
-      }
-
       this.selectedToken = token;
       this.tokenInfoVisible = true;
       this.selectedGrammar = hasGrammar
@@ -172,14 +169,15 @@ export default {
       };
     },
     tokenTitle(token) {
+      const meaning = this.isEn() ? (token.english || token.chinese) : token.chinese;
       if (token.word_id && token.grammar_id != null) {
-        return `${token.kana} / ${token.chinese} | 语法 #${token.grammar_id}`;
+        return `${token.kana} / ${meaning} | ${token.grammar_word || `语法 #${token.grammar_id}`}`;
       }
       if (token.word_id) {
-        return `${token.kana} / ${token.chinese}`;
+        return `${token.kana} / ${meaning}`;
       }
       if (token.grammar_id != null) {
-        return `语法 #${token.grammar_id}`;
+        return token.grammar_word || `语法 #${token.grammar_id}`;
       }
       return '';
     },

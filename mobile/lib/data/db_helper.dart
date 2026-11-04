@@ -8,6 +8,7 @@ import '../config.dart';
 import '../models/grammar.dart';
 import '../models/sentence.dart';
 import '../models/word.dart';
+import '../services/ui_text.dart';
 
 /// 本地内容库访问：课本数据打包在 assets，首启复制到应用目录后只读查询
 class DbHelper {
@@ -23,6 +24,14 @@ class DbHelper {
   static Future<Database> _open() async {
     final dbDir = await getDatabasesPath();
     final dbPath = p.join(dbDir, 'nihon_content.db');
+    // 内置库与本地库大小不一致时视为升级：删除旧库，下次复制新版（避免旧库缺新表）
+    if (File(dbPath).existsSync()) {
+      final localLen = await File(dbPath).length();
+      final assetData = await rootBundle.load(AppConfig.assetDbPath);
+      if (assetData.lengthInBytes != localLen) {
+        await File(dbPath).delete();
+      }
+    }
     if (!await File(dbPath).exists()) {
       final data = await rootBundle.load(AppConfig.assetDbPath);
       await File(dbPath).writeAsBytes(data.buffer.asUint8List(), flush: true);
@@ -59,6 +68,18 @@ class DbHelper {
   static Future<Word?> getWord(int id) async {
     final rows = await (await db).query('word', where: 'id = ?', whereArgs: [id], limit: 1);
     return rows.isEmpty ? null : Word.fromMap(rows.first);
+  }
+
+  /// 按 ID 批量取单词（保持传入顺序）
+  static Future<List<Word>> getWordsByIds(List<int> ids) async {
+    if (ids.isEmpty) return const [];
+    final rows = await (await db).query(
+      'word',
+      where: 'id IN (${List.filled(ids.length, '?').join(',')})',
+      whereArgs: ids,
+    );
+    final byId = {for (final r in rows) r['id'] as int: Word.fromMap(r)};
+    return [for (final id in ids) if (byId[id] != null) byId[id]!];
   }
 
   /// 全局单词检索（假名 / 汉字 / 中文，最多 50 条）
@@ -228,10 +249,10 @@ class DbHelper {
       final title = rawTitle.isNotEmpty
           ? rawTitle
           : switch (type) {
-              'dialogue' => '对话',
-              'essay' => '短文',
-              'grammar_example' => '语法例句',
-              _ => '句子',
+              'dialogue' => UiText.t('对话', 'Dialogue'),
+              'essay' => UiText.t('短文', 'Passage'),
+              'grammar_example' => UiText.t('语法例句', 'Grammar Examples'),
+              _ => UiText.t('句子', 'Sentences'),
             };
       result.add((title: title, type: type, sentences: sentences));
     }
@@ -251,11 +272,13 @@ class DbHelper {
     );
     if (rows.isEmpty) return null;
     final raw = (rows.first['file_path'] as String?) ?? '';
-    var rel = raw;
-    if (rel.startsWith(AppConfig.audioPathPrefix)) {
-      rel = rel.substring(AppConfig.audioPathPrefix.length);
-    }
-    rel = rel.replaceAll('\\', '/');
+    // 兼容两种 file_path 前缀：
+    //   旧: nihonAssitant\datapre\text2speech\audio\word\chapter_1\word_1.mp3
+    //   新: text2speech/audio/word/chapter_26/word_4485.mp3
+    // 统一取 audio/ 之后的部分作为 asset 相对路径
+    var rel = raw.replaceAll('\\', '/');
+    final idx = rel.lastIndexOf('audio/');
+    if (idx >= 0) rel = rel.substring(idx + 'audio/'.length);
     if (rel.isEmpty) return null;
     return 'audio/$rel';
   }
@@ -284,13 +307,69 @@ class DbHelper {
   static Future<Sentence> _attachTokens(Database d, Sentence s) async {
     final rows = await d.rawQuery(
       'SELECT st.token_index, st.surface, st.word_id, st.grammar_id, '
-      "COALESCE(w.kana, '') AS kana, COALESCE(w.kanji, '') AS kanji, COALESCE(w.chinese, '') AS chinese "
+      "COALESCE(w.kana, '') AS kana, COALESCE(w.kanji, '') AS kanji, "
+      "COALESCE(w.chinese, '') AS chinese, COALESCE(w.english, '') AS english "
       'FROM sentence_word_grammar st '
       'LEFT JOIN word w ON st.word_id = w.id '
       'WHERE st.sentence_id = ? ORDER BY st.token_index',
       [s.id],
     );
-    return s.copyWith(tokens: rows.map(SentenceToken.fromMap).toList());
+    final tokens = rows.map(SentenceToken.fromMap).toList();
+    // 按 grammar_id 附加 grammar_word 词条（与后端 attach_grammar_word 一致：
+    // 优先与 surface 精确相等；其次单/双字符前缀；都没有则取该语法第一条）
+    final gids = <int>{};
+    for (final t in tokens) {
+      final gid = t.grammarId;
+      if (gid != null) gids.add(gid);
+    }
+    if (gids.isNotEmpty) {
+      final placeholders = List.filled(gids.length, '?').join(',');
+      final gwRows = await d.rawQuery(
+        'SELECT grammar_id, word, explain, english FROM grammar_word '
+        'WHERE grammar_id IN ($placeholders) ORDER BY id',
+        gids.toList(),
+      );
+      final byGid = <int, List<(String, String, String)>>{};
+      for (final r in gwRows) {
+        final gid = r['grammar_id'] as int;
+        byGid.putIfAbsent(gid, () => []).add((
+          (r['word'] as String?) ?? '',
+          (r['explain'] as String?) ?? '',
+          (r['english'] as String?) ?? '',
+        ));
+      }
+      tokens.replaceRange(0, tokens.length, tokens.map((t) {
+        final gid = t.grammarId;
+        if (gid == null) return t;
+        final cands = byGid[gid] ?? const [];
+        if (cands.isEmpty) return t;
+        final surface = t.surface.trim();
+        (String, String, String)? hit;
+        for (final c in cands) {
+          if (c.$1 == surface) { hit = c; break; }
+        }
+        if (hit == null) {
+          for (final c in cands) {
+            if (c.$1.length <= 2 && surface.startsWith(c.$1)) { hit = c; break; }
+          }
+        }
+        hit ??= cands.first;
+        return SentenceToken(
+          tokenIndex: t.tokenIndex,
+          surface: t.surface,
+          wordId: t.wordId,
+          grammarId: t.grammarId,
+          kana: t.kana,
+          kanji: t.kanji,
+          chinese: t.chinese,
+          english: t.english,
+          grammarWord: hit.$1,
+          grammarExplain: hit.$2,
+          grammarExplainEn: hit.$3,
+        );
+      }).toList());
+    }
+    return s.copyWith(tokens: tokens);
   }
 
   /// 关闭数据库（供测试/重置使用）

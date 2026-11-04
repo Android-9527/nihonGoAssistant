@@ -20,6 +20,11 @@
         <h2>版本更新</h2>
         <p>查看版本迭代记录、功能变化与后续规划。</p>
       </article>
+
+      <article class="entry-card" @click="go('/privacy')">
+        <h2>隐私政策</h2>
+        <p>查看数据收集、使用、存储与删除方式的说明（Privacy Policy）。</p>
+      </article>
     </div>
   </section>
 </template>

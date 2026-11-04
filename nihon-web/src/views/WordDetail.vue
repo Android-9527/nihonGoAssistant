@@ -9,24 +9,24 @@
 
     <div v-if="word" class="word-info">
       <div class="info-card">
-        <h3>单词信息</h3>
+        <h3>{{ isEn() ? 'Word Info' : '单词信息' }}</h3>
         <div class="info-row">
-          <label>假名</label>
+          <label>{{ isEn() ? 'Kana' : '假名' }}</label>
           <span>{{ word.kana }}</span>
         </div>
         <div class="info-row">
-          <label>汉字</label>
-          <span>{{ word.kanji !== '/' ? word.kanji : '（无）' }}</span>
+          <label>{{ isEn() ? 'Kanji' : '汉字' }}</label>
+          <span>{{ word.kanji !== '/' ? word.kanji : (isEn() ? '(none)' : '（无）') }}</span>
         </div>
         <div class="info-row">
-          <label>中文</label>
-          <span>{{ word.chinese }}</span>
+          <label>{{ isEn() ? 'Meaning' : '中文' }}</label>
+          <span>{{ pickText(word.chinese, word.english) }}</span>
         </div>
       </div>
     </div>
 
     <div class="sentences-section">
-      <h3>包含该单词的例句（共 {{ sentences.length }} 句）</h3>
+      <h3>{{ isEn() ? `Sentences containing this word (${sentences.length})` : `包含该单词的例句（共 ${sentences.length} 句）` }}</h3>
       <div v-if="sentences.length > 0" class="sentences-list">
         <div v-for="sentence in sentences" :key="sentence.id" class="sentence-card">
           <div class="sentence-head">
@@ -50,16 +50,17 @@
               {{ token.surface }}
             </span>
           </div>
-          <div class="sentence-chinese">{{ sentence.chinese }}</div>
+          <div class="sentence-chinese">{{ pickText(sentence.chinese, sentence.english) }}</div>
         </div>
       </div>
-      <p v-else class="no-results">无包含该单词的例句</p>
+      <p v-else class="no-results">{{ isEn() ? 'No sentences contain this word' : '无包含该单词的例句' }}</p>
     </div>
   </div>
 </template>
 
 <script>
 import { speakJapanese } from '../utils/speech'
+import languageStore from '../store/language'
 
 export default {
   data() {
@@ -70,6 +71,12 @@ export default {
     };
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
+    pickText(zh, en) {
+      return languageStore.pickText(zh, en);
+    },
     async fetchWord() {
       this.wordId = this.$route.params.id;
       try {

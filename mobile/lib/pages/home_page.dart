@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/book.dart';
+import '../services/ui_text.dart';
 import 'book_chapters_page.dart';
 
 /// 我的课本：两本书入口
@@ -10,11 +11,12 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('我的课本')),
+      appBar: AppBar(title: Text(UiText.t('我的课本', 'My Textbooks'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('当前在学课本', style: TextStyle(color: Colors.grey.shade600)),
+          Text(UiText.t('当前在学课本', 'Current Textbook'),
+              style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 10),
           for (final book in defaultBooks)
             Card(
@@ -26,8 +28,11 @@ class HomePage extends StatelessWidget {
                   backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                   child: Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary),
                 ),
-                title: Text(book.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                subtitle: Text('第 ${book.chapterStart} - ${book.chapterEnd} 课 · ${book.chapters.length} 章'),
+                title: Text(UiText.t(book.title, book.titleEn),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                subtitle: Text(UiText.t(
+                    '第 ${book.chapterStart} - ${book.chapterEnd} 课 · ${book.chapters.length} 章',
+                    'Lessons ${book.chapterStart} - ${book.chapterEnd} · ${book.chapters.length} chapters')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
                   Navigator.of(context).push(

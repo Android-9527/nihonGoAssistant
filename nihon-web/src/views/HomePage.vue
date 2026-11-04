@@ -1,27 +1,27 @@
 <template>
   <section class="home">
     <header class="hero">
-      <h1>学习中心</h1>
-      <p>从课本、单词、语法三个模块进入学习。</p>
+      <h1>{{ isEn() ? 'Learning Center' : '学习中心' }}</h1>
+      <p>{{ isEn() ? 'Study from textbooks, words and grammar.' : '从课本、单词、语法三个模块进入学习。' }}</p>
     </header>
 
     <div class="module-grid">
       <article class="module-card" @click="go('/textbooks')">
-        <h2>我的课本</h2>
-        <p>查看当前在学课本，进入章节学习流程。</p>
+        <h2>{{ isEn() ? 'My Textbooks' : '我的课本' }}</h2>
+        <p>{{ isEn() ? 'View current textbook and start chapter study.' : '查看当前在学课本，进入章节学习流程。' }}</p>
       </article>
 
-      <article class="module-card review-card" @click="goReview">
-        <h2>我的复习</h2>
-        <p>优先复习上次忘记与低掌握的单词、语法。</p>
-        <div class="review-badge">{{ reviewBadge }}</div>
+      <article class="module-card wordbook-card" @click="goWordbook">
+        <h2>{{ isEn() ? 'My Wordbook' : '我的单词本' }}</h2>
+        <p>{{ isEn() ? 'Collect words from chapters, then review them anytime.' : '从各单元收藏单词，随时翻卡复习。' }}</p>
+        <div class="wordbook-badge">{{ wordbookBadge }}</div>
       </article>
     </div>
 
     <section class="word-search-panel">
       <div class="word-search-head">
-        <h2>单词检索</h2>
-        <p>支持假名、汉字、中文检索，点击可进入单词详情。</p>
+        <h2>{{ isEn() ? 'Word Search' : '单词检索' }}</h2>
+        <p>{{ isEn() ? 'Search by kana, kanji or meaning; click for details.' : '支持假名、汉字、中文检索，点击可进入单词详情。' }}</p>
       </div>
 
       <div class="word-search-form">
@@ -31,7 +31,7 @@
           placeholder="例如：相撲 / すもう / 相扑"
         />
         <button class="action-btn" @click="clearWordSearch" :disabled="!wordSearchText">
-          清空
+          {{ isEn() ? 'Clear' : '清空' }}
         </button>
       </div>
 
@@ -48,31 +48,31 @@
           <div class="word-result-main">
             <div class="word-result-kana">{{ word.kana }}</div>
             <div class="word-result-meta">
-              <span>汉字：{{ word.kanji && word.kanji !== '/' ? word.kanji : '（无）' }}</span>
-              <span>中文：{{ word.chinese }}</span>
+              <span>{{ isEn() ? 'Kanji: ' : '汉字：' }}{{ word.kanji && word.kanji !== '/' ? word.kanji : (isEn() ? '(none)' : '（无）') }}</span>
+              <span>{{ isEn() ? 'Meaning: ' : '中文：' }}{{ pickText(word.chinese, word.english) }}</span>
             </div>
           </div>
-          <div class="word-result-chapter">第{{ word.chapter }}章</div>
+          <div class="word-result-chapter">{{ isEn() ? `Ch.${word.chapter}` : `第${word.chapter}章` }}</div>
         </article>
-        <p v-if="!filteredWords.length" class="empty-review">未检索到匹配单词</p>
+        <p v-if="!filteredWords.length" class="empty-review">{{ isEn() ? 'No matching words found' : '未检索到匹配单词' }}</p>
       </div>
     </section>
 
     <section class="grammar-search-panel">
       <div class="grammar-search-head">
-        <h2>语法查询</h2>
-        <p>输入一句日语，自动分析并返回课本中最相关的 3 条语法。</p>
+        <h2>{{ isEn() ? 'Grammar Search' : '语法查询' }}</h2>
+        <p>{{ isEn() ? 'Enter a Japanese sentence to find the 3 most relevant grammar points.' : '输入一句日语，自动分析并返回课本中最相关的 3 条语法。' }}</p>
       </div>
 
       <div class="grammar-search-form">
         <input
           v-model.trim="querySentence"
           class="grammar-input"
-          placeholder="请输入日语句子，例如：これはいくらですか"
+          :placeholder="isEn() ? 'Enter a Japanese sentence, e.g. これはいくらですか' : '请输入日语句子，例如：これはいくらですか'"
           @keyup.enter="runGrammarSearch"
         />
         <button class="action-btn" @click="runGrammarSearch" :disabled="queryLoading || !querySentence">
-          {{ queryLoading ? '查询中...' : '开始查询' }}
+          {{ queryLoading ? (isEn() ? 'Searching...' : '查询中...') : (isEn() ? 'Search' : '开始查询') }}
         </button>
       </div>
 
@@ -90,24 +90,25 @@
           class="grammar-result-card"
           @click="openGrammarDetail(item)"
         >
-          <div class="grammar-result-title">{{ idx + 1 }}. 第{{ item.chapter }}章 · Grammar {{ item.grammar_id }}</div>
-          <div class="grammar-result-template">{{ item.template }}</div>
-          <div class="grammar-result-score">综合分：{{ (item.final_score * 100).toFixed(2) }}%</div>
+          <div class="grammar-result-title">{{ idx + 1 }}. {{ isEn() ? `Ch.${item.chapter} · Grammar ${item.grammar_id}` : `第${item.chapter}章 · Grammar ${item.grammar_id}` }}</div>
+          <div class="grammar-result-template">{{ pickText(item.template, item.template_en) }}</div>
+          <div class="grammar-result-score">{{ isEn() ? `Score: ${(item.final_score * 100).toFixed(2)}%` : `综合分：${(item.final_score * 100).toFixed(2)}%` }}</div>
         </article>
       </div>
 
-      <p v-else-if="queryResult" class="empty-review">没有检索到结果，可尝试更完整的句子。</p>
+      <p v-else-if="queryResult" class="empty-review">{{ isEn() ? 'No results. Try a more complete sentence.' : '没有检索到结果，可尝试更完整的句子。' }}</p>
     </section>
   </section>
 </template>
 
 <script>
 import userStore from '../store/user';
+import languageStore from '../store/language';
 
 export default {
   data() {
     return {
-      reviewCount: null,
+      wordbookCount: null,
       querySentence: '',
       queryLoading: false,
       queryError: '',
@@ -121,10 +122,11 @@ export default {
     isLoggedIn() {
       return userStore.isLoggedIn.value;
     },
-    reviewBadge() {
-      if (!this.isLoggedIn) return '登录后可查看待复习内容';
-      if (this.reviewCount === null) return '加载中...';
-      return this.reviewCount > 0 ? `${this.reviewCount} 项待复习` : '暂无待复习内容';
+    wordbookBadge() {
+      if (!this.isLoggedIn) return this.isEn() ? 'Log in to view wordbook' : '登录后可查看单词本';
+      if (this.wordbookCount === null) return this.isEn() ? 'Loading...' : '加载中...';
+      if (this.wordbookCount > 0) return this.isEn() ? `${this.wordbookCount} words` : `${this.wordbookCount} 个单词`;
+      return this.isEn() ? 'No saved words' : '暂无收藏单词';
     },
     filteredWords() {
       const keyword = this.wordSearchText.trim().toLowerCase();
@@ -141,27 +143,33 @@ export default {
     },
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
+    pickText(zh, en) {
+      return languageStore.pickText(zh, en);
+    },
     go(path) {
       this.$router.push(path);
     },
-    goReview() {
+    goWordbook() {
       if (!userStore.isLoggedIn.value) {
-        this.$router.push({ path: '/login', query: { redirect: '/home' } });
+        this.$router.push({ path: '/login', query: { redirect: '/wordbook' } });
         return;
       }
-      this.$router.push({ path: '/test', query: { mode: 'review' } });
+      this.$router.push('/wordbook');
     },
-    async fetchReviewCount() {
-      this.reviewCount = null;
+    async fetchWordbookCount() {
+      this.wordbookCount = null;
       try {
-        const response = await fetch('/api/review/recommendations?limit=60', {
+        const response = await fetch('/api/wordbook', {
           headers: userStore.authHeaders(),
         });
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || '获取复习数量失败');
-        this.reviewCount = Array.isArray(data) ? data.length : 0;
+        if (!response.ok) throw new Error(data.error || '获取单词本失败');
+        this.wordbookCount = Array.isArray(data) ? data.length : 0;
       } catch (error) {
-        this.reviewCount = 0;
+        this.wordbookCount = 0;
       }
     },
     async fetchWords() {
@@ -219,16 +227,16 @@ export default {
   watch: {
     isLoggedIn(val) {
       if (val) {
-        this.fetchReviewCount();
+        this.fetchWordbookCount();
       } else {
-        this.reviewCount = null;
+        this.wordbookCount = null;
       }
     },
   },
   mounted() {
     this.fetchWords();
     if (userStore.isLoggedIn.value) {
-      this.fetchReviewCount();
+      this.fetchWordbookCount();
     }
   },
 };
@@ -291,16 +299,16 @@ export default {
   font-size: 14px;
 }
 
-.review-card {
-  border-color: #a7f3d0;
-  background: linear-gradient(180deg, #ffffff, #f0fdf4);
+.wordbook-card {
+  border-color: #bae6fd;
+  background: linear-gradient(180deg, #ffffff, #f0f9ff);
 }
 
-.review-badge {
+.wordbook-badge {
   margin-top: 10px;
   display: inline-block;
-  background: #dcfce7;
-  color: #15803d;
+  background: #e0f2fe;
+  color: #0369a1;
   border-radius: 999px;
   padding: 4px 12px;
   font-size: 12px;

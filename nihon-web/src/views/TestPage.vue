@@ -69,10 +69,10 @@
           <div v-else class="flash-back">
             <div class="flash-kana">{{ currentWord.kana }}</div>
             <div class="flash-kanji">{{ currentWord.kanji && currentWord.kanji !== '/' ? currentWord.kanji : '（无汉字）' }}</div>
-            <div class="flash-cn">{{ currentWord.chinese }}</div>
+            <div class="flash-cn">{{ pickText(currentWord.chinese, currentWord.english) }}</div>
             <div class="flash-example">
               <div class="ex-jp">{{ currentWord.example?.japanese || '（暂无例句）' }}</div>
-              <div class="ex-cn">{{ currentWord.example?.chinese || '' }}</div>
+              <div class="ex-cn">{{ pickText(currentWord.example?.chinese || '', currentWord.example?.english || '') }}</div>
             </div>
           </div>
         </div>
@@ -99,8 +99,8 @@
             <div class="flash-hint">请回忆这个句子的语法</div>
           </div>
           <div v-else class="flash-back">
-            <div class="flash-template">{{ currentGrammar.template }}</div>
-            <div class="flash-explanation">{{ currentGrammar.explanation }}</div>
+            <div class="flash-template">{{ pickText(currentGrammar.template, currentGrammar.template_en) }}</div>
+            <div class="flash-explanation">{{ pickText(currentGrammar.explanation, currentGrammar.explanation_en) }}</div>
           </div>
         </div>
 
@@ -118,6 +118,7 @@
 <script>
 import { authHeaders } from '../store/user';
 import { speakJapanese } from '../utils/speech';
+import languageStore from '../store/language';
 
 function shuffle(arr) {
   const pool = [...arr];
@@ -185,6 +186,12 @@ export default {
     }
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
+    pickText(zh, en) {
+      return languageStore.pickText(zh, en);
+    },
     async loadTest() {
       try {
         const [wordsRes, grammarRes, sentencesRes] = await Promise.all([

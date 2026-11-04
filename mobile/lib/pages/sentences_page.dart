@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../data/db_helper.dart';
 import '../models/book.dart';
+import '../services/language_setting.dart';
+import '../services/ui_text.dart';
 import '../widgets/audio_button.dart';
 
 /// 句子库（课文）：按 课本 → 章节 两级选择展开
@@ -25,7 +27,7 @@ class _SentencesPageState extends State<SentencesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('句子库')),
+      appBar: AppBar(title: Text(UiText.t('句子库', 'Sentence Bank'))),
       body: Column(
         children: [
           // 课本选择
@@ -37,9 +39,14 @@ class _SentencesPageState extends State<SentencesPage> {
                   ButtonSegment(
                     value: i,
                     label: Text(
-                      defaultBooks[i].title.length > 6
-                          ? defaultBooks[i].title.substring(0, 6)
-                          : defaultBooks[i].title,
+                      UiText.t(
+                        defaultBooks[i].title.length > 6
+                            ? defaultBooks[i].title.substring(0, 6)
+                            : defaultBooks[i].title,
+                        defaultBooks[i].titleEn.length > 12
+                            ? defaultBooks[i].titleEn.substring(0, 12)
+                            : defaultBooks[i].titleEn,
+                      ),
                     ),
                   ),
               ],
@@ -61,7 +68,7 @@ class _SentencesPageState extends State<SentencesPage> {
                   Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: FilterChip(
-                      label: Text('第$ch章'),
+                      label: Text(UiText.t('第$ch章', 'Ch.$ch')),
                       selected: _chapter == ch,
                       onSelected: (_) => setState(() => _chapter = ch),
                     ),
@@ -78,15 +85,15 @@ class _SentencesPageState extends State<SentencesPage> {
   Widget _buildList() {
     final chapter = _chapter;
     if (chapter == null) {
-      return const Center(child: Text('请选择章节'));
+      return Center(child: Text(UiText.t('请选择章节', 'Select a chapter')));
     }
     return FutureBuilder(
       future: DbHelper.getSentences(chapter: chapter),
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('加载失败：${snap.error}'));
+        if (snap.hasError) return Center(child: Text(UiText.t('加载失败：', 'Load failed: ') + '${snap.error}'));
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final list = snap.data!;
-        if (list.isEmpty) return const Center(child: Text('本章暂无句子'));
+        if (list.isEmpty) return Center(child: Text(UiText.t('本章暂无句子', 'No sentences in this chapter')));
         return ListView.builder(
           padding: const EdgeInsets.all(12),
           itemCount: list.length,
@@ -106,7 +113,7 @@ class _SentencesPageState extends State<SentencesPage> {
                           Text(s.jpSentence, style: const TextStyle(fontSize: 17)),
                           const SizedBox(height: 4),
                           Text(
-                            s.chinese,
+                            LanguageSetting.t(s.chinese, s.english),
                             style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                           ),
                         ],

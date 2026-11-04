@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../data/db_helper.dart';
 import '../models/book.dart';
-import '../models/grammar.dart';
 import '../models/sentence.dart';
 import '../models/word.dart';
+import '../services/language_setting.dart';
+import '../services/ui_text.dart';
 import '../widgets/audio_button.dart';
 import 'grammar_detail_page.dart';
 import 'test_page.dart';
@@ -23,13 +24,13 @@ class ChapterLearnPage extends StatelessWidget {
       length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('第 $chapter 章'),
-          bottom: const TabBar(
+          title: Text(UiText.t('第 $chapter 章', 'Chapter $chapter')),
+          bottom: TabBar(
             tabs: [
-              Tab(text: '单词'),
-              Tab(text: '语法'),
-              Tab(text: '课文'),
-              Tab(text: '测试'),
+              Tab(text: UiText.t('单词', 'Words')),
+              Tab(text: UiText.t('语法', 'Grammar')),
+              Tab(text: UiText.t('课文', 'Texts')),
+              Tab(text: UiText.t('测试', 'Test')),
             ],
           ),
         ),
@@ -56,26 +57,27 @@ class _TokenInfoSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '分词：${token.surface}',
+              UiText.t('分词：${token.surface}', 'Token: ${token.surface}'),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             if (token.hasWord) ...[
               Text(
-                '单词信息',
+                UiText.t('单词信息', 'Word Info'),
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.green.shade800),
               ),
               const SizedBox(height: 4),
-              Text('假名：${token.kana.isEmpty ? '-' : token.kana}'),
-              Text('汉字：${token.kanji.isEmpty ? '-' : token.kanji}'),
-              Text('中文：${token.chinese.isEmpty ? '-' : token.chinese}'),
+              Text(UiText.t('假名：${token.kana.isEmpty ? '-' : token.kana}', 'Kana: ${token.kana.isEmpty ? '-' : token.kana}')),
+              Text(UiText.t('汉字：${token.kanji.isEmpty ? '-' : token.kanji}', 'Kanji: ${token.kanji.isEmpty ? '-' : token.kanji}')),
+              Text(UiText.t('释义：${LanguageSetting.t(token.chinese, token.english).isEmpty ? '-' : LanguageSetting.t(token.chinese, token.english)}',
+                  'Meaning: ${LanguageSetting.t(token.chinese, token.english).isEmpty ? '-' : LanguageSetting.t(token.chinese, token.english)}')),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -85,30 +87,20 @@ class _TokenInfoSheet extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => WordDetailPage(wordId: token.wordId!)),
                     );
                   },
-                  child: const Text('查看单词详情'),
+                  child: Text(UiText.t('查看单词详情', 'View Word Detail')),
                 ),
               ),
             ],
             if (token.hasGrammar) ...[
               const SizedBox(height: 8),
               Text(
-                '语法信息',
+                UiText.t('语法信息', 'Grammar Info'),
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.amber.shade900),
               ),
               const SizedBox(height: 4),
-              FutureBuilder<Grammar?>(
-                future: DbHelper.getGrammarDetail(token.grammarId!),
-                builder: (context, snap) {
-                  final g = snap.data;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('模板：${g?.template ?? (snap.hasError ? '加载失败' : '加载中…')}'),
-                      Text('解释：${g?.explanation ?? ''}'),
-                    ],
-                  );
-                },
-              ),
+              Text(UiText.t('语法单词：${token.grammarWord.isEmpty ? '-' : token.grammarWord}', 'Grammar Word: ${token.grammarWord.isEmpty ? '-' : token.grammarWord}')),
+              Text(UiText.t('解释：${LanguageSetting.t(token.grammarExplain, token.grammarExplainEn).isEmpty ? '-' : LanguageSetting.t(token.grammarExplain, token.grammarExplainEn)}',
+                  'Explanation: ${LanguageSetting.t(token.grammarExplain, token.grammarExplainEn).isEmpty ? '-' : LanguageSetting.t(token.grammarExplain, token.grammarExplainEn)}')),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -118,7 +110,7 @@ class _TokenInfoSheet extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => GrammarDetailPage(grammarId: token.grammarId!)),
                     );
                   },
-                  child: const Text('查看语法详情'),
+                  child: Text(UiText.t('查看语法详情', 'View Grammar Detail')),
                 ),
               ),
             ],
@@ -167,10 +159,10 @@ class _ChapterWordsTabState extends State<_ChapterWordsTab> {
           child: Wrap(
             spacing: 8,
             children: [
-              _toggleChip('隐藏假名', _hideKana, () => setState(() => _hideKana = !_hideKana)),
-              _toggleChip('隐藏汉字', _hideKanji, () => setState(() => _hideKanji = !_hideKanji)),
-              _toggleChip('隐藏中文', _hideChinese, () => setState(() => _hideChinese = !_hideChinese)),
-              _toggleChip(_shuffled ? '恢复顺序' : '乱序', _shuffled, _toggleShuffle),
+              _toggleChip(UiText.t('隐藏假名', 'Hide Kana'), _hideKana, () => setState(() => _hideKana = !_hideKana)),
+              _toggleChip(UiText.t('隐藏汉字', 'Hide Kanji'), _hideKanji, () => setState(() => _hideKanji = !_hideKanji)),
+              _toggleChip(UiText.t('隐藏中文', 'Hide Meaning'), _hideChinese, () => setState(() => _hideChinese = !_hideChinese)),
+              _toggleChip(_shuffled ? UiText.t('恢复顺序', 'Restore Order') : UiText.t('乱序', 'Shuffle'), _shuffled, _toggleShuffle),
             ],
           ),
         ),
@@ -178,9 +170,9 @@ class _ChapterWordsTabState extends State<_ChapterWordsTab> {
           child: FutureBuilder<List<Word>>(
             future: _future,
             builder: (context, snap) {
-              if (snap.hasError) return Center(child: Text('加载失败：${snap.error}'));
+              if (snap.hasError) return Center(child: Text(UiText.t('加载失败：', 'Load failed: ') + '${snap.error}'));
               if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-              if (_base.isEmpty) return const Center(child: Text('本章暂无单词'));
+              if (_base.isEmpty) return Center(child: Text(UiText.t('本章暂无单词', 'No words in this chapter')));
               final list = _shown;
               return ListView.builder(
                 itemCount: list.length,
@@ -188,7 +180,8 @@ class _ChapterWordsTabState extends State<_ChapterWordsTab> {
                   final w = list[i];
                   return ListTile(
                     title: _wordLine(w),
-                    subtitle: Text('第 ${w.chapter} 课', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    subtitle: Text(UiText.t('第 ${w.chapter} 课', 'Lesson ${w.chapter}'),
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                     trailing: AudioButton(entityType: 'word', entityId: w.id, fallbackText: w.kana),
                     onTap: () {
                       Navigator.of(context).push(
@@ -235,8 +228,11 @@ class _ChapterWordsTabState extends State<_ChapterWordsTab> {
     if (!_hideKana) parts.add(w.kana);
     final kanji = w.kanji.isEmpty || w.kanji == '/' ? '' : w.kanji;
     if (!_hideKanji && kanji.isNotEmpty) parts.add(kanji);
-    if (!_hideChinese) parts.add(w.chinese);
-    if (parts.isEmpty) return const Text('（已全部隐藏，点击按钮显示）', style: TextStyle(color: Colors.grey));
+    if (!_hideChinese) parts.add(LanguageSetting.t(w.chinese, w.english));
+    if (parts.isEmpty) {
+      return Text(UiText.t('（已全部隐藏，点击按钮显示）', '(All hidden — tap the chips to show)'),
+          style: const TextStyle(color: Colors.grey));
+    }
     return Text(
       parts.join('　'),
       style: const TextStyle(fontSize: 17),
@@ -254,10 +250,10 @@ class _ChapterGrammarTab extends StatelessWidget {
     return FutureBuilder(
       future: DbHelper.getGrammar(chapter: chapter),
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('加载失败：${snap.error}'));
+        if (snap.hasError) return Center(child: Text(UiText.t('加载失败：', 'Load failed: ') + '${snap.error}'));
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final list = snap.data!;
-        if (list.isEmpty) return const Center(child: Text('本章暂无语法'));
+        if (list.isEmpty) return Center(child: Text(UiText.t('本章暂无语法', 'No grammar in this chapter')));
         return ListView.builder(
           itemCount: list.length,
           itemBuilder: (context, i) {
@@ -266,7 +262,7 @@ class _ChapterGrammarTab extends StatelessWidget {
               leading: const Icon(Icons.rule),
               title: Text(g.template, style: const TextStyle(fontSize: 16)),
               subtitle: Text(
-                g.explanation,
+                LanguageSetting.t(g.explanation, g.explanationEn),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
@@ -294,10 +290,10 @@ class _ChapterTextsTab extends StatelessWidget {
     return FutureBuilder(
       future: DbHelper.getChapterTextGroups(chapter),
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('加载失败：${snap.error}'));
+        if (snap.hasError) return Center(child: Text(UiText.t('加载失败：', 'Load failed: ') + '${snap.error}'));
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
         final groups = snap.data!;
-        if (groups.isEmpty) return const Center(child: Text('本章暂无课文'));
+        if (groups.isEmpty) return Center(child: Text(UiText.t('本章暂无课文', 'No texts in this chapter')));
         return ListView.builder(
           padding: const EdgeInsets.all(12),
           itemCount: groups.length,
@@ -316,7 +312,7 @@ class _ChapterTextsTab extends StatelessWidget {
                         group.title,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      Text('（${group.sentences.length} 句）',
+                      Text(UiText.t('（${group.sentences.length} 句）', '(${group.sentences.length} sentences)'),
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                     ],
                   ),
@@ -374,7 +370,7 @@ class _ChapterTextsTab extends StatelessWidget {
                           ],
                           const SizedBox(height: 6),
                           Text(
-                            s.chinese,
+                            LanguageSetting.t(s.chinese, s.english),
                             style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
                           ),
                         ],
@@ -394,15 +390,17 @@ class _ChapterTextsTab extends StatelessWidget {
     final clickable = t.hasWord || t.hasGrammar;
     final Color bg;
     final Color border;
-    if (!clickable) {
-      bg = Colors.grey.shade100;
-      border = Colors.grey.shade300;
-    } else if (t.hasGrammar) {
-      bg = t.hasWord ? Colors.amber.shade50 : Colors.yellow.shade100;
-      border = Colors.amber.shade300;
+    final Color fg;
+    if (t.hasGrammar) {
+      // 语法分词：黄色高亮（与网页 token-grammar 一致）
+      bg = const Color(0xFFFEF9C3);
+      border = const Color(0xFFFDE047);
+      fg = const Color(0xFF854D0E);
     } else {
-      bg = Colors.green.shade50;
-      border = Colors.green.shade300;
+      // 单词/普通分词：灰底不高亮（与网页一致）
+      bg = const Color(0xFFF3F4F6);
+      border = const Color(0xFFD1D5DB);
+      fg = Colors.grey.shade600;
     }
     return InkWell(
       onTap: clickable ? () => _onTokenTap(context, t) : null,
@@ -416,38 +414,18 @@ class _ChapterTextsTab extends StatelessWidget {
         ),
         child: Text(
           t.surface,
-          style: TextStyle(
-            fontSize: 13,
-            color: !clickable
-                ? Colors.grey.shade600
-                : t.hasGrammar
-                    ? const Color(0xFF854D0E)
-                    : const Color(0xFF166534),
-          ),
+          style: TextStyle(fontSize: 13, color: fg),
         ),
       ),
     );
   }
 
-  /// 分词点击：单词 → 单词详情；语法 → 语法详情；两者都有 → 底部弹窗选择
+  /// 分词点击：统一弹出信息面板（单词假名/汉字/中文 + 语法单词/解释），与网页版一致
   Future<void> _onTokenTap(BuildContext context, SentenceToken token) async {
     if (!token.hasWord && !token.hasGrammar) return;
-    if (token.hasWord && !token.hasGrammar) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => WordDetailPage(wordId: token.wordId!)),
-      );
-      return;
-    }
-    if (!token.hasWord && token.hasGrammar) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => GrammarDetailPage(grammarId: token.grammarId!)),
-      );
-      return;
-    }
     await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _TokenInfoSheet(token: token, pageContext: context),
     );
@@ -473,25 +451,26 @@ class _ChapterTestTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('本章自测', style: Theme.of(context).textTheme.titleMedium),
+        Text(UiText.t('本章自测', 'Chapter Test'), style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        Text('测试需要登录，结果将同步到你的学习记录', style: TextStyle(color: Colors.grey.shade600)),
+        Text(UiText.t('测试需要登录，结果将同步到你的学习记录', 'Tests require login; results will sync to your learning record'),
+            style: TextStyle(color: Colors.grey.shade600)),
         const SizedBox(height: 16),
         Card(
           child: Column(
             children: [
               ListTile(
                 leading: const Icon(Icons.menu_book_outlined),
-                title: const Text('单词测试'),
-                subtitle: const Text('本章单词随机出题'),
+                title: Text(UiText.t('单词测试', 'Word Test')),
+                subtitle: Text(UiText.t('本章单词随机出题', 'Random words from this chapter')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _openTest(context, 'word'),
               ),
               const Divider(height: 1, indent: 56),
               ListTile(
                 leading: const Icon(Icons.rule_outlined),
-                title: const Text('语法测试'),
-                subtitle: const Text('本章语法随机出题'),
+                title: Text(UiText.t('语法测试', 'Grammar Test')),
+                subtitle: Text(UiText.t('本章语法随机出题', 'Random grammar from this chapter')),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _openTest(context, 'grammar'),
               ),

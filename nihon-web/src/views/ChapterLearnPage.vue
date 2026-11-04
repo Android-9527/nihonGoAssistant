@@ -1,20 +1,22 @@
 <template>
   <section class="learn-wrap">
     <header>
-      <h1>第 {{ chapter }} 章学习路径</h1>
+      <h1>{{ isEn() ? `Chapter ${chapter} Study Path` : `第 ${chapter} 章学习路径` }}</h1>
       <p>{{ bookTitle }}</p>
     </header>
 
     <div class="flow-grid">
-      <button class="flow-item" @click="goWords">1. 单词</button>
-      <button class="flow-item" @click="goGrammar">2. 语法</button>
-      <button class="flow-item" @click="goText">3. 课文</button>
-      <button class="flow-item" @click="goTest">4. 测试</button>
+      <button class="flow-item" @click="goWords">1. {{ isEn() ? 'Words' : '单词' }}</button>
+      <button class="flow-item" @click="goGrammar">2. {{ isEn() ? 'Grammar' : '语法' }}</button>
+      <button class="flow-item" @click="goText">3. {{ isEn() ? 'Text' : '课文' }}</button>
+      <button class="flow-item" @click="goTest">4. {{ isEn() ? 'Test' : '测试' }}</button>
     </div>
   </section>
 </template>
 
 <script>
+import languageStore from '../store/language';
+
 const KEY = 'nihon_books';
 
 export default {
@@ -27,6 +29,9 @@ export default {
     },
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
     loadBook() {
       const saved = localStorage.getItem(KEY);
       if (!saved) return;

@@ -2,18 +2,20 @@
   <section class="chapters-wrap">
     <header>
       <h1>{{ bookTitle }}</h1>
-      <p>选择章节进入学习流程。</p>
+      <p>{{ isEn() ? 'Select a chapter to start learning.' : '选择章节进入学习流程。' }}</p>
     </header>
 
     <div class="chapters-grid">
       <button v-for="n in chapters" :key="n" class="chapter-btn" @click="openChapter(n)">
-        第 {{ n }} 章
+        {{ isEn() ? `Chapter ${n}` : `第 ${n} 章` }}
       </button>
     </div>
   </section>
 </template>
 
 <script>
+import languageStore from '../store/language';
+
 const KEY = 'nihon_books';
 
 export default {
@@ -38,6 +40,9 @@ export default {
     },
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
     openChapter(chapter) {
       this.$router.push(`/textbook/${this.$route.params.bookId}/chapter/${chapter}/learn`);
     },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/book.dart';
+import '../services/ui_text.dart';
 import 'chapter_learn_page.dart';
 
 /// 课本章节列表
@@ -13,7 +14,7 @@ class BookChaptersPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final chapters = book.chapters;
     return Scaffold(
-      appBar: AppBar(title: Text(book.title)),
+      appBar: AppBar(title: Text(UiText.t(book.title, book.titleEn))),
       body: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -34,7 +35,8 @@ class BookChaptersPage extends StatelessWidget {
                 );
               },
               child: Center(
-                child: Text('第 $n 章', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                child: Text(UiText.t('第 $n 章', 'Chapter $n'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ),
             ),
           );

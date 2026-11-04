@@ -3,6 +3,7 @@ import json
 import os
 import re
 import secrets
+import random
 import threading
 import time
 from datetime import datetime, timedelta
@@ -94,16 +95,6 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
     expires_at TEXT NOT NULL
 );
-CREATE TABLE IF NOT EXISTS user_answer_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    element_type TEXT NOT NULL,
-    element_id INTEGER NOT NULL,
-    chapter INTEGER,
-    correct INTEGER NOT NULL,
-    duration_ms INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
-);
 CREATE TABLE IF NOT EXISTS user_element_mastery (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -129,10 +120,18 @@ CREATE TABLE IF NOT EXISTS user_review_queue (
     status TEXT NOT NULL DEFAULT 'active',
     created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+CREATE TABLE IF NOT EXISTS user_wordbook (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    word_id INTEGER NOT NULL,
+    chapter INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    UNIQUE(user_id, word_id)
+);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_answer_log_user ON user_answer_log(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_mastery_user ON user_element_mastery(user_id);
 CREATE INDEX IF NOT EXISTS idx_review_queue_user ON user_review_queue(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_wordbook_user ON user_wordbook(user_id);
 """
 
 
@@ -240,7 +239,8 @@ def token_select_sql(conn, word_table: str) -> str:
     pos_expr = "st.pos" if has_pos else "'' AS pos"
     return f"""
         SELECT st.token_index, st.surface, {pos_expr}, st.word_id, st.grammar_id,
-               COALESCE(w.kana, '') as kana, COALESCE(w.kanji, '') as kanji, COALESCE(w.chinese, '') as chinese
+               COALESCE(w.kana, '') as kana, COALESCE(w.kanji, '') as kanji, COALESCE(w.chinese, '') as chinese,
+               COALESCE(w.english, '') as english
         FROM sentence_word_grammar st
         LEFT JOIN {word_table} w ON st.word_id = w.id
         WHERE st.sentence_id = ?
@@ -282,6 +282,7 @@ def build_sentence_tokens(segmented_text: str | None, japanese_text: str | None,
                     "kana": mapped.get("kana", ""),
                     "kanji": mapped.get("kanji", ""),
                     "chinese": mapped.get("chinese", ""),
+                    "english": mapped.get("english", ""),
                 }
             )
         return merged
@@ -493,6 +494,49 @@ def clean_word_tokens(tokens: list[dict]) -> list[dict]:
     return tokens
 
 
+def attach_grammar_word(conn, tokens: list[dict]) -> list[dict]:
+    """按 grammar_id 附加 grammar_word 词条信息（word + explain），供前端分词弹窗展示。
+
+    词条匹配：优先与 token surface 精确相等；其次单/双字符前缀（如 お国→お）；
+    都没有则取该语法第一个词条。
+    """
+    gids = {t["grammar_id"] for t in tokens if t.get("grammar_id") is not None}
+    if not gids:
+        return tokens
+    placeholders = ",".join(["?"] * len(gids))
+    rows = conn.execute(
+        f"SELECT grammar_id, word, explain, english FROM grammar_word WHERE grammar_id IN ({placeholders})",
+        tuple(gids),
+    ).fetchall()
+    by_gid: dict[int, list[tuple[str, str, str]]] = {}
+    for gid, word, explain, english in rows:
+        by_gid.setdefault(gid, []).append((word, explain or "", english or ""))
+    for token in tokens:
+        gid = token.get("grammar_id")
+        if gid is None:
+            continue
+        cands = by_gid.get(gid) or []
+        if not cands:
+            continue
+        surface = (token.get("surface") or "").strip()
+        hit = None
+        for w, ex, en in cands:
+            if w == surface:
+                hit = (w, ex, en)
+                break
+        if hit is None:
+            for w, ex, en in cands:
+                if len(w) <= 2 and surface.startswith(w):
+                    hit = (w, ex, en)
+                    break
+        if hit is None:
+            hit = cands[0]
+        token["grammar_word"] = hit[0]
+        token["grammar_explain"] = hit[1]
+        token["grammar_explain_en"] = hit[2]
+    return tokens
+
+
 def load_grammar_index(chapters=range(1, 51)) -> list[dict]:
     conn = get_db()
     try:
@@ -640,22 +684,30 @@ def grammar_search_cache_set(sentence: str, value: dict) -> None:
 
 @app.route("/api/words", methods=["GET"])
 def get_words():
-    """Get all words"""
+    """Get all words, optionally filtered by chapter and/or keyword search"""
     conn = get_db()
     chapter = request.args.get("chapter", type=int)
+    search = request.args.get("search", "").strip()
     word_table = pick_table(conn, "words", "word")
     has_chapter = column_exists(conn, word_table, "chapter")
     tts_expr = tts_audio_id_expr(conn, "word", f"{word_table}.id")
 
+    where = []
+    params = []
     if chapter and has_chapter:
-        cur = conn.execute(
-            f"SELECT id, kana, kanji, chinese, chapter, {tts_expr} AS tts_audio_id FROM {word_table} WHERE chapter = ? ORDER BY id",
-            (chapter,),
-        )
-    elif has_chapter:
-        cur = conn.execute(f"SELECT id, kana, kanji, chinese, chapter, {tts_expr} AS tts_audio_id FROM {word_table} ORDER BY id")
-    else:
-        cur = conn.execute(f"SELECT id, kana, kanji, chinese, {tts_expr} AS tts_audio_id FROM {word_table} ORDER BY id")
+        where.append("chapter = ?")
+        params.append(chapter)
+    if search:
+        like = f"%{search}%"
+        where.append("(kana LIKE ? OR kanji LIKE ? OR chinese LIKE ? OR english LIKE ?)")
+        params.extend([like, like, like, like])
+    where_sql = (" WHERE " + " AND ".join(where)) if where else ""
+
+    select_cols = "id, kana, kanji, chinese, english, chapter" if has_chapter else "id, kana, kanji, chinese, english"
+    cur = conn.execute(
+        f"SELECT {select_cols}, {tts_expr} AS tts_audio_id FROM {word_table}{where_sql} ORDER BY id",
+        params,
+    )
     words = [dict(row) for row in cur.fetchall()]
     for word in words:
         word["kanji"], word["chinese"] = clean_word_display(word.get("kanji"), word.get("chinese"))
@@ -677,7 +729,7 @@ def get_word_sentences(word_id):
         f"""
          SELECT DISTINCT s.id, s.chapter, s.{group_col} AS grid,
              {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id,
-             s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese
+             s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese, s.english
         FROM sentence s
         JOIN sentence_word_grammar st ON s.id = st.sentence_id
         WHERE st.word_id = ?
@@ -691,12 +743,15 @@ def get_word_sentences(word_id):
     for sentence in sentences:
         cur = conn.execute(token_select_sql(conn, word_table), (sentence["id"],))
         mapped_tokens = [dict(row) for row in cur.fetchall()]
-        sentence["tokens"] = clean_word_tokens(
-            build_sentence_tokens(
-                sentence.get("japanese_segmented"),
-                sentence.get("japanese"),
-                mapped_tokens,
-            )
+        sentence["tokens"] = attach_grammar_word(
+            conn,
+            clean_word_tokens(
+                build_sentence_tokens(
+                    sentence.get("japanese_segmented"),
+                    sentence.get("japanese"),
+                    mapped_tokens,
+                )
+            ),
         )
     
     conn.close()
@@ -716,12 +771,12 @@ def get_sentences():
     
     if chapter:
         cur = conn.execute(
-            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese FROM sentence WHERE chapter = ? ORDER BY id",
+            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese, english FROM sentence WHERE chapter = ? ORDER BY id",
             (chapter,),
         )
     else:
         cur = conn.execute(
-            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese FROM sentence ORDER BY id"
+            f"SELECT id, chapter, {group_col} AS grid, {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id, {jp_col} AS japanese, {seg_col} AS japanese_segmented, chinese, english FROM sentence ORDER BY id"
         )
     
     sentences = [dict(row) for row in cur.fetchall()]
@@ -732,12 +787,15 @@ def get_sentences():
     for sentence in sentences:
         cur = conn.execute(token_select_sql(conn, word_table), (sentence["id"],))
         mapped_tokens = [dict(row) for row in cur.fetchall()]
-        sentence["tokens"] = clean_word_tokens(
-            build_sentence_tokens(
-                sentence.get("japanese_segmented"),
-                sentence.get("japanese"),
-                mapped_tokens,
-            )
+        sentence["tokens"] = attach_grammar_word(
+            conn,
+            clean_word_tokens(
+                build_sentence_tokens(
+                    sentence.get("japanese_segmented"),
+                    sentence.get("japanese"),
+                    mapped_tokens,
+                )
+            ),
         )
 
         if has_sentence_grammar:
@@ -773,12 +831,12 @@ def get_grammar():
     
     if chapter:
         cur = conn.execute(
-            "SELECT id, chapter, template, explanation FROM grammar WHERE chapter = ? ORDER BY id",
+            "SELECT id, chapter, template, explanation, template_en, explanation_en FROM grammar WHERE chapter = ? ORDER BY id",
             (chapter,),
         )
     else:
         cur = conn.execute(
-            "SELECT id, chapter, template, explanation FROM grammar ORDER BY id"
+            "SELECT id, chapter, template, explanation, template_en, explanation_en FROM grammar ORDER BY id"
         )
     
     grammar_points = [dict(row) for row in cur.fetchall()]
@@ -791,7 +849,7 @@ def get_grammar():
                 f"""
                 SELECT s.id, s.chapter, s.{group_col} AS grid,
                       {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id,
-                       s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese
+                       s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese, s.english
                 FROM sentence s
                 JOIN grammar_examples ge ON s.id = ge.sentence_id
                 WHERE ge.grammar_id = ?
@@ -804,7 +862,7 @@ def get_grammar():
                 f"""
                   SELECT s.id, s.chapter, s.{group_col} AS grid,
                       {group_id_expr}, {group_type_expr}, {group_title_expr}, {speaker_expr}, {content_expr}, {sentence_tts_expr} AS tts_audio_id,
-                       s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese
+                       s.{jp_col} AS japanese, s.{seg_col} AS japanese_segmented, s.chinese, s.english
                 FROM sentence s
                 JOIN grammar_group_sentence ggs ON s.group_id = ggs.group_id
                 WHERE ggs.grammar_id = ?
@@ -819,12 +877,15 @@ def get_grammar():
         for example in examples:
             cur = conn.execute(token_select_sql(conn, word_table), (example["id"],))
             mapped_tokens = [dict(row) for row in cur.fetchall()]
-            example["tokens"] = clean_word_tokens(
-                build_sentence_tokens(
-                    example.get("japanese_segmented"),
-                    example.get("japanese"),
-                    mapped_tokens,
-                )
+            example["tokens"] = attach_grammar_word(
+                conn,
+                clean_word_tokens(
+                    build_sentence_tokens(
+                        example.get("japanese_segmented"),
+                        example.get("japanese"),
+                        mapped_tokens,
+                    )
+                ),
             )
         
         point["examples"] = examples
@@ -1131,10 +1192,6 @@ def test_submit():
             return jsonify({"error": "元素不存在"}), 404
 
         now = now_str()
-        conn.execute(
-            "INSERT INTO user_answer_log (user_id, element_type, element_id, chapter, correct, duration_ms, created_at) VALUES (?,?,?,?,?,?,?)",
-            (g.user["id"], element_type, element_id, chapter, correct_flag, duration_ms, now),
-        )
 
         mrow = conn.execute(
             "SELECT * FROM user_element_mastery WHERE user_id=? AND element_type=? AND element_id=?",
@@ -1162,8 +1219,12 @@ def test_submit():
         total += 1
 
         if correct_flag:
-            next_review = (datetime.now() + timedelta(days=review_days_for_mastery(new_mastery))).strftime("%Y-%m-%d %H:%M:%S")
+            # 间隔递增复习：连续答对 streak 次 → 下次间隔 2^streak 天，封顶 30 天
+            # （越熟练，间隔越长；达到长期记忆后不再频繁打扰）
+            gap_days = min(2 ** new_streak, 30)
+            next_review = (datetime.now() + timedelta(days=gap_days)).strftime("%Y-%m-%d %H:%M:%S")
         else:
+            # 忘记 → 次日立即再出现一次，streak 已清零，间隔从 2 天重新开始
             next_review = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
 
         if mrow:
@@ -1245,6 +1306,182 @@ def review_recommendations():
             seen.add(key)
 
         return jsonify(items[:limit])
+    finally:
+        conn.close()
+
+
+def pick_word_example(conn, word_id: int) -> dict | None:
+    """Return one random example sentence containing the given word."""
+    jp_col, _, _ = sentence_cols(conn)
+    row = conn.execute(
+        f"SELECT s.id, s.{jp_col} AS japanese, s.chinese, s.english "
+        "FROM sentence_word_grammar st JOIN sentence s ON s.id = st.sentence_id "
+        "WHERE st.word_id = ? AND s.english IS NOT NULL AND s.english != '' "
+        "ORDER BY RANDOM() LIMIT 1",
+        (word_id,),
+    ).fetchone()
+    if not row:
+        return None
+    return {
+        "japanese": row["japanese"],
+        "chinese": row["chinese"],
+        "english": row["english"],
+    }
+
+
+@app.route("/api/wordbook", methods=["GET"])
+@require_auth
+def get_wordbook():
+    """List the current user's saved words, grouped client-side by chapter.
+    Pass ?examples=1 to attach one random example sentence per word."""
+    user_id = g.user["id"]
+    with_examples = request.args.get("examples", type=int) == 1
+    conn = get_db()
+    try:
+        word_table = pick_table(conn, "words", "word")
+        tts_expr = tts_audio_id_expr(conn, "word", "w.id")
+        rows = conn.execute(
+            f"SELECT w.id, w.kana, w.kanji, w.chinese, w.english, w.chapter, {tts_expr} AS tts_audio_id "
+            f"FROM {word_table} w JOIN user_wordbook uw ON uw.word_id = w.id "
+            "WHERE uw.user_id = ? ORDER BY w.chapter, w.id",
+            (user_id,),
+        ).fetchall()
+        words = []
+        for row in rows:
+            item = dict(row)
+            item["kanji"], item["chinese"] = clean_word_display(item.get("kanji"), item.get("chinese"))
+            if with_examples:
+                item["example"] = pick_word_example(conn, item["id"])
+            words.append(item)
+        return jsonify(words)
+    finally:
+        conn.close()
+
+
+@app.route("/api/wordbook/review", methods=["GET"])
+@require_auth
+def get_wordbook_review():
+    """调度取词：到期旧词（忘记/到期）优先约 70%，未到期新词随机补 30%。
+
+    到期来源：
+      1) user_review_queue 中 active 且 due_at<=now 的词（上次忘记被重新入队，priority 高在前）
+      2) user_element_mastery 中 next_review_at<=now 或 mastery<MASTERY_LOW 的词（到期复习）
+    新词来源：词本中既未到期也非低掌握的词（含从未复习过的新收藏词），随机抽取补足。
+    """
+    limit = request.args.get("limit", type=int) or 30
+    limit = max(1, min(limit, 100))
+    user_id = g.user["id"]
+    conn = get_db()
+    try:
+        word_table = pick_table(conn, "words", "word")
+        tts_expr = tts_audio_id_expr(conn, "word", "w.id")
+        now = now_str()
+
+        # 用户词本全部单词
+        rows = conn.execute(
+            f"SELECT w.id, w.kana, w.kanji, w.chinese, w.english, w.chapter, {tts_expr} AS tts_audio_id "
+            f"FROM {word_table} w JOIN user_wordbook uw ON uw.word_id = w.id "
+            "WHERE uw.user_id = ? ORDER BY w.chapter, w.id",
+            (user_id,),
+        ).fetchall()
+        if not rows:
+            return jsonify([])
+
+        book = [dict(r) for r in rows]
+        for item in book:
+            item["kanji"], item["chinese"] = clean_word_display(item.get("kanji"), item.get("chinese"))
+
+        # 到期词 1：复习队列中 active 且到期的（忘记过的优先，priority 降序）
+        qrows = conn.execute(
+            "SELECT element_id FROM user_review_queue "
+            "WHERE user_id=? AND element_type='word' AND status='active' AND due_at<=? "
+            "ORDER BY priority DESC, due_at ASC",
+            (user_id, now),
+        ).fetchall()
+        due_ids = []
+        due_reason = {}
+        for r in qrows:
+            due_ids.append(r["element_id"])
+            due_reason[r["element_id"]] = "上次忘记，优先复习"
+
+        # 到期词 2：掌握度低 / 到期未复习的
+        mrows = conn.execute(
+            "SELECT element_id FROM user_element_mastery "
+            "WHERE user_id=? AND element_type='word' AND (mastery<? OR next_review_at<=?)",
+            (user_id, MASTERY_LOW, now),
+        ).fetchall()
+        for r in mrows:
+            if r["element_id"] not in due_reason:
+                due_ids.append(r["element_id"])
+                due_reason[r["element_id"]] = "到期复习"
+
+        due_set = set(due_ids)
+        due_words = [b for b in book if b["id"] in due_set]          # 保持词本顺序
+        new_words = [b for b in book if b["id"] not in due_set]       # 未到期/从未复习
+
+        due_quota = int(round(limit * 0.7))
+        new_quota = limit - due_quota
+        if len(due_words) < due_quota:
+            # 到期词不足时，剩余配额全部让给新词
+            new_quota += due_quota - len(due_words)
+            due_quota = len(due_words)
+
+        picked = due_words[:due_quota] if due_quota else []
+        if new_quota > 0 and new_words:
+            # 新词随机抽取补足（random.sample 无序抽样）
+            picked += random.sample(new_words, min(new_quota, len(new_words)))
+        elif len(due_words) > due_quota:
+            # 到期词太多且没有新词可补时，多取到期词填满
+            picked = due_words[:limit]
+
+        for item in picked:
+            item["example"] = pick_word_example(conn, item["id"])
+            item["reason"] = due_reason.get(item["id"], "新词")
+        return jsonify(picked)
+    finally:
+        conn.close()
+
+
+@app.route("/api/wordbook", methods=["POST"])
+@require_auth
+def add_wordbook():
+    """Add a word to the current user's wordbook (idempotent)."""
+    payload = request.get_json(silent=True) or {}
+    try:
+        word_id = int(payload.get("word_id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "缺少有效的 word_id"}), 400
+    conn = get_db()
+    try:
+        word_table = pick_table(conn, "words", "word")
+        row = conn.execute(
+            f"SELECT id, chapter FROM {word_table} WHERE id = ? LIMIT 1",
+            (word_id,),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "单词不存在"}), 404
+        conn.execute(
+            "INSERT OR IGNORE INTO user_wordbook (user_id, word_id, chapter, created_at) VALUES (?,?,?,?)",
+            (g.user["id"], word_id, row["chapter"], now_str()),
+        )
+        conn.commit()
+        return jsonify({"ok": True, "word_id": word_id})
+    finally:
+        conn.close()
+
+
+@app.route("/api/wordbook/<int:word_id>", methods=["DELETE"])
+@require_auth
+def remove_wordbook(word_id):
+    """Remove a word from the current user's wordbook."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM user_wordbook WHERE user_id = ? AND word_id = ?",
+            (g.user["id"], word_id),
+        )
+        conn.commit()
+        return jsonify({"ok": True, "word_id": word_id})
     finally:
         conn.close()
 

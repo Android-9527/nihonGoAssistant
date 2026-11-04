@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/db_helper.dart';
 import '../models/sentence.dart';
 import '../models/word.dart';
+import '../services/language_setting.dart';
+import '../services/ui_text.dart';
 import '../widgets/audio_button.dart';
 
 /// 单词详情：词义 + 出现的例句
@@ -18,7 +20,10 @@ class WordDetailPage extends StatelessWidget {
       builder: (context, ws) {
         if (!ws.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator()));
         final w = ws.data;
-        if (w == null) return const Scaffold(body: Center(child: Text('单词不存在')));
+        if (w == null) {
+          return Scaffold(
+              body: Center(child: Text(UiText.t('单词不存在', 'Word not found'))));
+        }
         return Scaffold(
           appBar: AppBar(title: Text(w.display)),
           body: FutureBuilder<List<Sentence>>(
@@ -46,22 +51,28 @@ class WordDetailPage extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Text('读音：${w.kana}', style: const TextStyle(fontSize: 16)),
+                          Text(UiText.t('读音：${w.kana}', 'Kana: ${w.kana}'),
+                              style: const TextStyle(fontSize: 16)),
                           const SizedBox(height: 4),
-                          Text('释义：${w.chinese}', style: const TextStyle(fontSize: 16)),
+                          Text(UiText.t('释义：${LanguageSetting.t(w.chinese, w.english)}',
+                              'Meaning: ${LanguageSetting.t(w.chinese, w.english)}'),
+                              style: const TextStyle(fontSize: 16)),
                           const SizedBox(height: 4),
-                          Text('第 ${w.chapter} 课', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
+                          Text(UiText.t('第 ${w.chapter} 课', 'Lesson ${w.chapter}'),
+                              style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('例句（${sentences.length}）', style: Theme.of(context).textTheme.titleMedium),
+                  Text(UiText.t('例句（${sentences.length}）', 'Examples (${sentences.length})'),
+                      style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
                   if (sentences.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(8),
-                      child: Text('暂无例句', style: TextStyle(color: Colors.grey)),
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Text(UiText.t('暂无例句', 'No examples yet'),
+                          style: const TextStyle(color: Colors.grey)),
                     )
                   else
                     ...sentences.map(
@@ -79,7 +90,7 @@ class WordDetailPage extends StatelessWidget {
                                     Text(s.jpSentence, style: const TextStyle(fontSize: 16)),
                                     const SizedBox(height: 4),
                                     Text(
-                                      s.chinese,
+                                      LanguageSetting.t(s.chinese, s.english),
                                       style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                                     ),
                                   ],

@@ -1,5 +1,6 @@
 <script>
 import { speakJapanese } from '../utils/speech'
+import languageStore from '../store/language'
 
 export default {
   data() {
@@ -16,6 +17,12 @@ export default {
     };
   },
   methods: {
+    isEn() {
+      return languageStore.isEn();
+    },
+    pickText(zh, en) {
+      return languageStore.pickText(zh, en);
+    },
     async fetchWords() {
       try {
         const chapter = this.$route.query.chapter;
@@ -79,19 +86,19 @@ export default {
 <template>
   <div class="words-container">
     <div class="words-header">
-      <h2>单词学习</h2>
+      <h2>{{ isEn() ? 'Word Study' : '单词学习' }}</h2>
       <div class="controls">
         <button @click="toggleHide('kana')" :class="{ active: hideFields.kana }" class="btn">
-          {{ hideFields.kana ? '显示假名' : '隐藏假名' }}
+          {{ hideFields.kana ? (isEn() ? 'Show Kana' : '显示假名') : (isEn() ? 'Hide Kana' : '隐藏假名') }}
         </button>
         <button @click="toggleHide('kanji')" :class="{ active: hideFields.kanji }" class="btn">
-          {{ hideFields.kanji ? '显示汉字' : '隐藏汉字' }}
+          {{ hideFields.kanji ? (isEn() ? 'Show Kanji' : '显示汉字') : (isEn() ? 'Hide Kanji' : '隐藏汉字') }}
         </button>
         <button @click="toggleHide('chinese')" :class="{ active: hideFields.chinese }" class="btn">
-          {{ hideFields.chinese ? '显示中文' : '隐藏中文' }}
+          {{ hideFields.chinese ? (isEn() ? 'Show English' : '显示英文') : (isEn() ? 'Hide English' : '隐藏英文') }}
         </button>
         <button @click="toggleShuffle" :class="{ active: isShuffled }" class="btn btn-primary">
-          {{ isShuffled ? '恢复顺序' : '乱序' }}
+          {{ isShuffled ? (isEn() ? 'Restore order' : '恢复顺序') : (isEn() ? 'Shuffle' : '乱序') }}
         </button>
       </div>
     </div>
@@ -114,13 +121,13 @@ export default {
         <div class="word-content">
           <span v-if="!hideFields.kana" class="kana">{{ word.kana }}</span>
           <span v-if="!hideFields.kanji" class="kanji">{{ word.kanji }}</span>
-          <span v-if="!hideFields.chinese" class="chinese">{{ word.chinese }}</span>
+          <span v-if="!hideFields.chinese" class="chinese">{{ pickText(word.chinese, word.english) }}</span>
         </div>
       </div>
     </div>
 
     <p v-if="displayWords.length === 0" class="no-results">
-      暂无单词
+      {{ isEn() ? 'No words yet' : '暂无单词' }}
     </p>
   </div>
 </template>
